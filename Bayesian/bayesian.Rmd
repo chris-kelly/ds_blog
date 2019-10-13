@@ -1,0 +1,235 @@
+---
+title: "Bayesian Statistics"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# knitr::opts_chunk$set(echo = TRUE)
+require(plotly)
+require(scales)
+```
+
+*A Bayesian is one who, vaguely expecting a horse, and catching a glimpse of a donkey, strongly believes he has seen a mule*
+
+## Scenario
+
+Imagine there are only two coins in the world:
+
+* Fair coins: have a probability of flipping heads 50%
+* Biased coins: have a probability of flipping heads 75%
+
+We are not sure if the coin we have is biased or fair though.
+
+We might run the following proceedure: we flip the coin 20 times, and get 14 heads. We say this is having gathered some **evidence**. So given we got 14 heads, we now want to know the likelihood that the coin was biased.
+
+To understand this, imagine that, 50,000 times, we repeat the proceedure of flipping the coin as above, each time recording the number of heads. If the coin was fair, we would get a histogram similar to the plot of the left - if biased, to the right.
+
+
+```{r prior_simulation_1, echo = F}
+fair_distribution <- rbinom(50000, 20, 0.5)
+biased_distribution <- rbinom(50000, 20, 0.75)
+
+num_14_fair = sum(fair_distribution == 14)
+num_14_biased = sum(biased_distribution == 14)
+
+# plot_ly(alpha = 0.6) %>%
+#   add_histogram(x = ~fair_distribution) %>%
+#   add_histogram(x = ~biased_distribution) %>% 
+#   # add_histogram(x = rep(14, 12000)) %>% 
+#   add_segments(x = 14, xend = 14, y = 0, yend = 12000) %>%
+#   layout(barmode = "overlay")
+
+subplot(plot_ly(x = ~fair_distribution, type = 'histogram', name = 'Fair') 
+            %>% add_segments(x = 14, xend = 14, y = 0, yend = num_14_fair, name = '14 heads')
+        , plot_ly(x = ~biased_distribution, type = 'histogram', name = 'Biased')
+            %>% add_segments(x = 14, xend = 14, y = 0, yend = num_14_biased, showlegend = F)
+        , shareY = T)
+```
+
+Of the 50,000 simulated results for each coin type, the number of times 14 heads out of 20 were recorded were:
+
+* **`r num_14_biased`** biased coins (`r percent(num_14_biased/50000)` of the time)
+* **`r num_14_fair`** fair coins (`r percent(num_14_fair/50000)` of the time)
+
+So what is the likelihood that a coin came from the biased distribution? Well we would observe `r format(num_14_fair + num_14_biased, big.mark = ',', scientific=FALSE)` simulated heads, `r format(num_14_fair, big.mark = ',', scientific=FALSE)` heads from the fair coin and `r format(num_14_biased, big.mark = ',', scientific=FALSE)` from the biased coin. 
+
+So we can work out the likelihood we have a biased coin by dividing the number times 14 heads were recorded from our simulated biased coin by the total number of times 14 heads were simulated in total.
+
+**`r num_14_biased`/(`r num_14_fair`+`r num_14_biased`)=`r percent(num_14_biased/(num_14_fair+num_14_biased))`**
+
+Similarly, we can work out the likelihood we have a fair coin by dividing the number times 14 heads were recorded from our simulated fair coin by the total number of times 14 heads were simulated in total.
+
+**`r num_14_fair`/(`r num_14_fair`+`r num_14_biased`)=`r percent(num_14_fair/(num_14_fair+num_14_biased))`**
+
+This is the **posterior probability**: it is the conditional probability after the **relevant evidence** (14 heads) is taken into account. 
+
+## Prior probablities
+
+In this instance though, we are assuming that the likelihood of the coin being either biased or fair is equal. However, we might already know that in our economy, 90% of the coins are fair, and only 10% of the coins are biased. This is a **prior belief** that we now take into account when calculating our posterior probability.
+
+We can simulate this prior belief by repeating the proceedure, but for the fair coin 90,000 times, and for the biased one only 10,000 times. This is analogous to 90% of the coins in the economy being fair:
+
+```{r prior_simulation_2, echo=FALSE}
+fair_distribution2 <- rbinom(90000, 20, 0.5)
+biased_distribution2 <- rbinom(10000, 20, 0.75)
+
+num_14_fair2 = sum(fair_distribution2 == 14)
+num_14_biased2 = sum(biased_distribution2 == 14)
+
+subplot(plot_ly(x = ~fair_distribution2, type = 'histogram', name = 'Fair') 
+            %>% add_segments(x = 14, xend = 14, y = 0, yend = num_14_fair2, name = '14 heads')
+        , plot_ly(x = ~biased_distribution2, type = 'histogram', name = 'Biased')
+            %>% add_segments(x = 14, xend = 14, y = 0, yend = num_14_biased2, showlegend = F)
+        , shareY = T)
+```
+
+Of the simulated results for each coin type, **`r num_14_fair2`** fair coins flipped heads 14 times, and **`r num_14_biased2`** biased coins flipped heads 14 times.
+
+If we do the same calculation, we now see the probabiliy of being biased is much lower, because we had prior beliefs that the coin was more likely to be fair before we even observed the evidence.
+
+**`r num_14_biased2`/(`r num_14_fair2`+`r num_14_biased2`)=`r percent(num_14_biased2/(num_14_fair2+num_14_biased2))`**
+
+## So how does this relate to Bayes Theorem?
+
+What we have just done is equivalent to the following:
+
+$$
+P(\text{Biased}|H=14) =\frac{P(\text{14 heads and coin is biased})}{P(\text{14 heads and coin is fair})+P(\text{14 heads and coin is biased})}
+$$
+
+$$
+P(\text{Biased}|H=14) =\frac{P(H=14|\text{Biased}) \times P(\text{Biased})}{[P(H=14|\text{Fair}) \times P(\text{Fair})]+[P(H=14|\text{Biased}) \times P(\text{Biased})]}
+$$
+
+$$
+P(\text{Biased}|H=14) =\frac{P(H=14|\text{Biased}) \times P(\text{Biased})}{P(H=14)}
+$$
+
+```{r, echo = F}
+# So for the above, without any prior knowledge of the ratio of coins in the economy (we assume 50/50):
+# 
+# $P(H=14|\text{Biased}) = \frac{`r num_14_biased`}{50,000} = `r percent(num_14_biased/50000)`$ $\%;$ 
+# $P(\text{Biased}) = \frac{50,000}{100,000} = 50\%$
+# $P(H=14|\text{Fair}) = \frac{`r num_14_fair`}{50,000} = `r percent(num_14_fair/50000)`$ $\%; $ 
+# $P(\text{Fair}) = \frac{50,000}{100,000} = 50\%$
+# 
+# $$\frac{P(H=14|\text{Biased}) \times P(\text{Biased})}{[P(H=14|\text{Fair}) \times P(\text{Fair})]+[P(H=14|\text{Biased}) \times P(\text{Biased})]} = $$
+# 
+# $$\frac{ `r percent(num_14_biased/50000)` \times 50  }{[ `r percent(num_14_fair/50000) ` \times 50 ]+[ `r percent(num_14_biased/50000) ` \times 50  ]} = $$
+```
+
+
+The conditional probability of the coin being biased, given 14 heads were observed can be generalised:
+
+* Our prior belief, $P(\text{Biased})$, can be written as $P(\theta)$.
+* The evidence observed is flipping 14 heads, which can be written as $X$
+
+This gives us Bayes equation:
+
+$$
+P(\theta|X) =\frac{P(X|\theta) \times P(\theta)}{P(X|\theta) \times P(\theta) + P(X|\theta') \times P(\theta')} =\frac{P(X|\theta) \times P(\theta)}{P(X)}
+$$
+
+Rather than simulating then, we can calculate this exactly:
+
+``` {r}
+# P(X|theta)
+p.14_heads.fair_coin = dbinom(x = 14, size = 20, prob = 0.5)
+p.14_heads.biased_coin = dbinom(x = 14, size = 20, prob = 0.75)
+# P(theta)
+p.fair_coin = 0.5
+p.biased_coin = 0.5
+# P(X)
+p.14_heads = (p.14_heads.fair_coin * p.fair_coin) + (p.14_heads.biased_coin * p.biased_coin)
+# P(theta|X)
+bayes.biased.without_prior = (p.14_heads.biased_coin * p.biased_coin)/p.14_heads
+bayes.fair.without_prior = (p.14_heads.fair_coin * p.fair_coin)/p.14_heads
+
+# P(theta)
+p.fair_coin = 0.9
+p.biased_coin = 0.1
+# P(X)
+p.14_heads = (p.14_heads.fair_coin * p.fair_coin) + (p.14_heads.biased_coin * p.biased_coin)
+# P(theta|X)
+bayes.biased.with_prior = (p.14_heads.biased_coin * p.biased_coin)/p.14_heads
+bayes.fair.with_prior = (p.14_heads.fair_coin * p.fair_coin)/p.14_heads
+```
+
+* This gives us a probability of being biased without the prior of **`r percent(bayes.biased.without_prior)`**
+* This gives us a probability of being biased with the prior of **`r percent(bayes.biased.with_prior)`**
+
+That's pretty close to our simulated results. Nice.
+
+## Quick recap of the 'Classical Approach' ('frequentist')
+
+```{r, echo = F}
+# First things first - we need a good grasp of what a random variable is. A random variable creates values that, until observed, are unknown. The likelihood of observing each value is pre-determined by a probability distribution associated with the random variable though. For example, a fair coin has a 50% chance of landing on heads, and 50% chance of tails. We do not know what it will land on before we flip it, but the true probability of landing on heads is pre-defined as 50%.
+
+population.obs <- rnorm(10000000,4.52,10)
+population.mean <- mean(population.obs)
+population.sd <- sqrt(sum((population.obs - population.mean)^2)/length(population.obs))
+
+perc.1.stdev.mean <-
+sum(population.mean - population.sd < population.obs 
+    & population.obs < population.mean + population.sd)/length(population.obs)
+
+perc.2.stdev.mean <-
+sum(population.mean - 2*population.sd < population.obs 
+    & population.obs < population.mean + 2*population.sd)/length(population.obs)
+
+sample.n <- 100
+
+sample.means <- 
+sapply(1:10000, FUN = function(x) mean(sample(population.obs, sample.n, T)))
+
+perc.popmean.in.sample.90ci <-
+sum(sample.means - 1.645*(population.sd/sqrt(sample.n)) < population.mean 
+    & population.mean < sample.means + 1.645*(population.sd/sqrt(sample.n)))/length(sample.means)
+
+perc.popmean.in.sample.95ci <-
+sum(sample.means - 1.96*(population.sd/sqrt(sample.n)) < population.mean 
+    & population.mean < sample.means + 1.96*(population.sd/sqrt(sample.n)))/length(sample.means)
+
+```
+
+Rather than Bayesian, a 'classical approach' of statistical inference is sometimes called 'frequentist'. Under this approach, we assume our data is collected from a sample (drawn truly randomly, and hence if we repeated this sampling proceedure many many times, on average we would expect our averaged samples to be reflective of the entire population). This is why it is called frequentist - it relies on the assumption that, if the data was sampled many times, in the long run it would give a reflective approximation of the population. 
+
+Let's give it a quick recap:
+
+* We have a population, which is characterised by a constant parameter $\theta$ *(e.g. the average amount of TV watched per person in the UK)*
+* There is only one true value of the parameter $\theta$ - so this is a constant *(e.g. it is not between 4-6 hours per week, but exactly `r round(population.mean,2)` hours)*
+* We randomly sample observations from the population to get a point estimate *(e.g. we choose a random number of people in the UK and find out how often they watch tv, and our sample mean is `r round(sample.means[1],2)` hours)*
+* The randomly sampled observations are independent, so observing any one value does not have an impact on what subsequent values we observe might be *(e.g. if we have 10 balls in a bag, 5 white and 5 black, there is a 50% of chance of choosing each colour. If we take out a black ball, but don't replace it, then we only have a 44% chance of choosing a black ball again. In practice, this might mean that our population is sufficiently large when compared to our sample that we don't need to be concerned with replacement. Another thing is network effects - imagine an airline increases price of seats as they sell. Say we want to experiment in offering some customers a special offer for airline tickets, our variant, and some not, our control: the customers with the special offer might be more likely to buy, and this will shorten the supply, increasing the price for those without the special offer, and decreasing their likelihood to buy).*
+* Any sampled observations are identically distributed to the population *(e.g. if we take our sample from the USA, they might have a different propensity to watch TV than the UK.)*
+* Because it is a random sample, the values observed are characterised by a probability distribution associated with $\theta$. *(e.g. we don't know what the value of the number hours watched for each observation will be until we sample it. The likelihood of what we observe though is pre-determined through its associated probability distribution with $\theta$)*
+
+Something important to re-iterate:
+
+* The population parameter $\theta$ is pre-defined constant, in this case `r round(population.mean, 2)`
+* The sample mean is a random variable (whose values depend on the probablity distribution associated with $\theta$). This is because it is taken from a truly random sample, so it could be `r round(sample.means[1],2)` for our first sample, or for another sample it could be another number (e.g. `r round(sample.means[2],2)`). The likelihood of observing $X$ is given as $P(X|\theta)$.
+
+This difference between constant and random variable is key when making inferences in the classical approach. Inferences generally take the form of an inferred parameter (a detected value of `r round(sample.means[1],2)` hours in the sample), a confidence interval (often 95%, say `r round(sample.means[1] - 1.96*(population.sd/sqrt(sample.n)),2)` - `r round(sample.means[1] + 1.96*(population.sd/sqrt(sample.n)),)` hours) and a hypothesis test (a p-value, often whether the value is significantly different from zero, say `r pnorm((sample.means[1]-0)/(population.sd/sqrt(sample.n)))`). So, for example, if we repeated the sampling proceedure many times, this means: 
+
+* On average, we expect the average from many observed sample means to tend towards the true value of 4.52 hours. However, any one sample mean (e.g. 4.6) will always be different from the population mean, so we will never get the right point estimate, no matter how large the sample.
+* on 95% of sampling occasions, the confidence intervals around our sample mean will contain the true, constant value of $\theta$ (4.52). What we can't say though is that, given one sample, the value of $\theta$ is 95% likely to fall within the confidence interval of the one-time sample mean of 4.6. This is because $\theta$ is a pre-defined constant, not a random variable whose value is unknown before it is observed. Since it already exists, and is constant, it either falls within the confidence interval of the sample mean, or it doesn't. In our instance, our confidence interval is 3.9-5.3, so it definitely falls within our confidence. Regardless of whether the population mean is unknown to us, it is already pre-defined and constant, so there is no probability associated with it falling within the confidence intervals or not.
+* The p-value provides the probability that, given the null hypothesis is actually true, the sampled data (or even more extreme data) is observed. What it doesn't say is whether the null hypothesis is actually true or false, it just states the likelihood of observing the sampled mean given the null hypothesis is true. Again, this is because the null hypothesis is either true or false already, it is not a random variable. Hence, we can only say it is the likelihood of observing our sample mean given the null hypothesis is true.
+
+Again - inferences are based on the probability distribution of the data: $P(X|\theta)$ (e.g. the probability of observing the data sampled given theta is zero).
+
+## Okay, so exactly does a Bayesian approach mean?
+
+Bayesian inference is broadly similar to frequentist inference. **The key difference though is that, under a Bayesian approach, the true value of $\theta$ is treated as a random variable, rather than a constant.** For example, we might believe the behaviour of $\theta$ changes as we keep sampling. To model this, we need to have some prior belief as to the probability distribution that conditions the true value of $\theta$ (our prior) and update our belief with the incorporation of new data (evidence). In other words, it is the incorporation of the $P(\theta)$ term in the Bayes equation that means we treat $theta$ as a random variable, rather than treat it as a fixed quantity. 
+
+It is the incorporation of prior data that is either seen as Bayesian's biggest advantage or pitfall. On the one hand, experiments are not abstract devices, and some knowledge about the process being investigated before obtaining the data is known and arguably should be incorporated. On the other, incorporating subjective opinions, particularly strong ones, may mean that you do not learn the true values you are trying to derive. Bayesian is thus analysis that uses a set of observations to change opinion rather than as a means to determine ultimate truth.
+
+* Prior distribution: $Pr(\theta)$ - represents existing belief about $\theta$ (*Represents what was thought before seeing the data*). For example, in the binomial coin example above, we have prior knowledge know that 90% of coins in our economy are fair, so $P(\theta)=P(Biased)=0.1$
+* Likelihood function: $Pr(X|\theta)$ - the probability of $\theta$ given the data  observed (*Represents the new data available*). For example, $P(H=14|Biased)=0.82$
+* Joint probability density function: $Pr(X,\theta)=Pr((X|\theta).Pr(\theta)$ - used to modify prior beliefs through Bayes Theorem
+* Marginal probability: $Pr(X)$ - the total probability of the data across all possible values of the parameter $\theta$. It doesn't actually depend on $\theta$ and isoften referred to as the proportionality factor/normalising constant (it makes sure all the scenarios are modelled. For example, $P(H=14) = P(H=14|Fair) \times P(Fair) + P(H=14|Biased) \times P(Biased)$)
+* Posterior distribution: $Pr(\theta|X)$ - the *posterior density* represents the knowledge about the model parameters after observing the data (*Represents what is now thought given both prior data and data just obtained*)
+
+Hence, Bayes theorem provides the means for learning, with continual instantaneous updating occuring as today's posterior becomes tomorrow's prior.
+
+In this way, the sample we observe is connditioned by the probability distribution driven by the true value of $\theta$, ***
+
+
