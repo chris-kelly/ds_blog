@@ -8,7 +8,7 @@ output:
   pdf_document: default
 ---
 
-```{r}
+```{r, include=FALSE}
 # ## GAUSSIAN
 # mu <- 50
 # sd <- 25
@@ -28,9 +28,14 @@ output:
 #       sample.p+1.96*sqrt(sample.p*(1- sample.p)/sample.n) >= p)
 ```
 
-```{r setup, include=FALSE}
+```{r setup, echo = FALSE}
 # knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_chunk$set(fig.width=10, fig.height=7)
+knitr::opts_chunk$set(
+	fig.height = 7,
+	fig.width = 10,
+	message = FALSE,
+	warning = FALSE
+)
 require(plotly)
 require(scales)
 ```
@@ -39,7 +44,7 @@ require(scales)
 
 ## Quick recap of the 'Classical Approach' ('Frequentist')
 
-```{r echo = F}
+```{r}
 set.seed(0)
 p <- 0.5
 n <- 10
@@ -49,7 +54,7 @@ Let's say we have a coin, and we want to know the probability that we flip heads
 
 To try and discover the true probability of getting a head, we flip the coin `r n` times, and count the number of heads to estimate the probability. Frequentists believe that if we repeated this sampling proceedure many, many times, we should expect the average across all of our samples to be reflective of the true population value (hence why it is called 'frequentist'). 
 
-``` {r, echo = F, fig.width=10, fig.height=7}
+``` {r, fig.width=10, fig.height=7}
 # Create repeated samples
 num_repeated_samples <- 10^3
 repeated_samples <- rbinom(n = num_repeated_samples, size = n, prob = p)
@@ -61,10 +66,9 @@ plot_ly(type = 'scatter', mode = 'lines') %>%
   layout(showlegend = F
          , yaxis = list(range = c(0, 1))
          , title = "Cumulative sample means tends to true p") # , 
-
 ```
 
-``` {r, echo = F, fig.width=10, fig.height=7}
+``` {r, fig.width=10, fig.height=7}
 k <- round(n*p*0.5,0)
 sample_mean <- k/n
 ```
@@ -79,7 +83,7 @@ This is also equivalent to saying that, after observing evidence of the sample m
 
 In this example then (and in many others), it can be seen then that just taking one (small) sample can result in an estimated probability that is quite different.
 
-``` {r, echo = F, fig.width=10, fig.height=7}
+``` {r, fig.width=10, fig.height=7}
 # Plotting likelihood of any theta, P(X|theta) (according to frequentists)
 binomial_probability <- function(k, n, p) {
   prob_sample <- factorial(n)/(factorial(k)*factorial(n-k))*(p)^k*(1-p)^(n-k)
@@ -100,10 +104,10 @@ plot_ly(type = 'scatter', mode = 'lines') %>%
 
 In this way then, despite believing the actual (population) probability $\theta$ to be fixed at one value, frequentists believe that the mean of our sample is a random variable (conditioned by $\theta$). By random variable, this means that the number of heads could be a variety of values before sampling (0-`r n`) rather than being pre-determined/fixed. The likelihood of observing any of these possible values is conditioned by the fixed probability $\theta$,  as per the distribution above - (if the true value of $\theta$ is $`r p`$, then observing $`r p*n`$ heads in our sample is a lot more likely than observing $`r n`$).
 
-Hence, to acknowledge that there is randomness associated with this sample mean, frequentists construct confidence intervals. A 95% confidence interval means that, if the sampling proceedure was repeated many, many times, that 95% of the time the true value of $\theta$ would fall within the confidence interval. 
+Hence, to acknowledge that there is randomness associated with this sample mean, frequentists construct confidence intervals. A 95% confidence interval means that, if the sampling proceedure was repeated many, many times, that 95% of the time the true value of $\theta$ would fall within the confidence interval.
 *(Technical note - this is not the same as saying that, in one sample, there is a 95% chance that the true value of $\theta$ lies within it. This is because $\theta$ is a fixed value, not a random variable, so it either falls within the sample confidence interval or not.)*
 
-``` {r, echo = F, fig.width=10, fig.height=7}
+``` {r, fig.width=10, fig.height=7}
 
 true.p.se <- sqrt(p*(1-p)/n)
 
@@ -176,7 +180,7 @@ Under the guise of being frequentists previously, we had no prior belief as to w
 
 Now, as bayesians, we are also incorporating our prior beliefs as to what $\theta$ is - that it is either fair or biased. We believe that there is not just random error associated in sampling - we also treat $\theta$ as an additional random variable, since we don't know whether our coin is fair or biased either.
 
-``` {r, echo = F, fig.width=10, fig.height=7}
+``` {r, fig.width=10, fig.height=7}
 fair_coin_k_prob <- binomial_probability(k, n, p)
 biased_coin_k_prob <- binomial_probability(k, n, k/n)
 ```
@@ -185,7 +189,7 @@ Given that we observe `r k` heads, the likelihood of this occuring if the coin i
 
 However, we also need to take into account that $90$% of coins in the population are fair, so even before observing `r k` heads, we have some belief about whether the coin is fair or biased (i.e. the probability distribution associated with the random variable $\theta$). 
 
-``` {r, echo = F, fig.width=10, fig.height=7}
+``` {r, fig.width=10, fig.height=7}
 fair_coin_prob <- (fair_coin_k_prob * 0.9)/((fair_coin_k_prob * 0.9) + (biased_coin_k_prob * 0.1))
 biased_coin_prob <- (biased_coin_k_prob * 0.1)/((fair_coin_k_prob * 0.9) + (biased_coin_k_prob * 0.1))
 ```
@@ -272,7 +276,7 @@ $$
 $$
 
 
-``` {r, echo = F, fig.width=10, fig.height=7}
+``` {r, fig.width=10, fig.height=7}
 
 beta_probability <- function(theta,a,b) {
   return(((theta)^(a-1))*((1-theta)^(b-1)))
@@ -317,7 +321,7 @@ $$
 $$
 \text{Posterior: } \text{Beta}[k_{1}+k_{2},n_{1}-k_{1}+n_{2}-k_{2}] = \text{Beta}[5+3,5+7] = \text{Beta}[8,12]  
 $$
-``` {r, echo = F, fig.width=10, fig.height=7}
+``` {r, fig.width=10, fig.height=7}
 k1 <- 5
 n1 <- 10
 k2 <- k
