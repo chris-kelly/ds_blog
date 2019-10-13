@@ -69,7 +69,7 @@ k <- round(n*p*0.5,0)
 sample_mean <- k/n
 ```
 
-But in the real world, its not possible to take lots of samples over and over again - and we generally just take one. This time, we observe `r k` heads. This is equivalent to creating a sample of size $`r n`$ and observing a mean probability of $`r sample_mean`$.
+But in the real world, its not possible to take lots of samples over and over again - and we generally just take one. Taking a sample one time, we might observe `r k` heads. This is equivalent to creating a sample of size $`r n`$ and observing a mean probability of $`r sample_mean`$.
 
 We don't know what the true probability of flipping heads is ($\theta$), but we can plot the likelihood of observing `r k` heads for every possible probability of flipping heads the coin could have. On the graph below, for every possible value that the probability of flipping heads could be on the x axis (somewhere between 0 and 1), the likelihood of observing $`r k`$ heads is plotted on the y axis, giving the orange line. 
 
@@ -142,12 +142,12 @@ one_time_sample.conf_97.5 <- (k/n)+1.96*one_time.sample.p.se
 
 # One time sample either contains true value of theta or not
 plot_ly(type = 'scatter', mode = 'lines') %>%
-  add_trace(x = rep(c(one_time_sample.conf_02.5, one_time_sample.conf_97.5), each = 3), y = c(1,-1,0,0,-1,1), name = 'Cumulative mean with sampling') %>%
-  add_trace(x = p, y = 0, mode = 'markers', name = 'Cumulative mean with sampling', marker = list(size=50, symbol = 'x')) %>%
+  add_trace(x = rep(c(one_time_sample.conf_02.5, one_time_sample.conf_97.5), each = 3), y = c(1,-1,0,0,-1,1), name = 'Confidence interval') %>%
+  add_trace(x = p, y = 0, mode = 'markers', name = 'True value', marker = list(size=50, symbol = 'x')) %>%
   layout(showlegend = F
          , yaxis = list(range = c(-2, 2), zeroline = F, showticklabels = F)
          , xaxis = list(range = c(one_time_sample.conf_02.5 - 0.1, one_time_sample.conf_97.5 + 0.1))
-         , title = "Sample confidence interval either contains true value of theta or not")
+         , title = "One-time sample confidence interval either contains true value of theta or not")
 
 # Cumulative confidence intervals contain 95% of the time
 plot_ly(type = 'scatter', mode = 'lines') %>%
@@ -331,9 +331,9 @@ likelihood_f <- dbeta(x, k2, n2-k2)
 posterior <- dbeta(x, k1+k2, n1-k1+n2-k2)
 
 plot_ly(type = 'scatter', mode = 'lines') %>%
-  add_trace(x = x, y = prior, name = 'Prior belief') %>%
-  add_trace(x = x, y = likelihood_f, name = 'Likelihood (New data)') %>%
-  add_trace(x = x, y = posterior, name = 'Posterior Belief') %>%
+  add_trace(x = x, y = prior, name = 'Prior belief: Horse') %>%
+  add_trace(x = x, y = likelihood_f, name = 'Likelihood (New data): Donkey') %>%
+  add_trace(x = x, y = posterior, name = 'Posterior Belief: Mule') %>%
   layout(title = "Updating Prior Beliefs")
 ```
 
