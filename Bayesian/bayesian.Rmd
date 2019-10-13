@@ -312,14 +312,14 @@ In the two Bayesian examples above though, we either had a very weak prior (the 
 So - let's say the last coin we tried flipping `r n` times got heads `r p*n` times (our prior) and the new coin flipped heads `r k` times (our new evidence). We can then get the following equations:
 
 $$
-\text{Prior: } \text{Beta}[k_{1},n_{1}-k_{1}] = \text{Beta}[5,10-5] = \text{Beta}[5,5] 
+\text{Prior: } \text{Beta}[k_{1},n_{1}-k_{1}] = \text{Beta}[`r k1`,`r n1`-`r k1`] = \text{Beta}[`r k1`,`r n1-k1`]
 $$
 $$
-\text{Likelihood: } \text{Beta}[k_{2},n_{2}-k_{2}] = \text{Beta}[3,10-3] = \text{Beta}[3,7]
+\text{Likelihood: } \text{Beta}[k_{2},n_{2}-k_{2}] = \text{Beta}[`r k2`,`r n2`-`r k2`] = \text{Beta}[`r k2`,`r n2-k2`]
 $$
 
 $$
-\text{Posterior: } \text{Beta}[k_{1}+k_{2},n_{1}-k_{1}+n_{2}-k_{2}] = \text{Beta}[5+3,5+7] = \text{Beta}[8,12]  
+\text{Posterior: } \text{Beta}[k_{1}+k_{2},n_{1}-k_{1}+n_{2}-k_{2}] = \text{Beta}[`r k1` + `r k2`,`r n1-k1` + `r n2-k2`] = \text{Beta}[`r k1+k2`,`r n1-k1+n2-k2`]
 $$
 ``` {r, fig.width=10, fig.height=7}
 k1 <- 5
