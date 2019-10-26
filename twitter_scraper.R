@@ -39,6 +39,7 @@ get_twitter_channel_tweets <- function(channel = 'ChelseaFC', num_tweets = 200) 
                                    , 'https://api.twitter.com/1.1/statuses/user_timeline.json?'
                                    , 'screen_name=', channel
                                    , '&count=', num_tweets
+                                   , '&tweet_mode=extended' # to prevent tweet truncation
                                    , '"')
                             , intern = T))
   return(result)
@@ -51,7 +52,8 @@ search_twitter_query <- function(query = 'Chelsea Football', num_tweets = 100, u
                                    , 'https://api.twitter.com/1.1/search/tweets.json?'
                                    , 'q=', URLencode(query)
                                    , '&count=', num_tweets
-                                   # , '&until=', until
+                                   , '&until=', until
+                                   , '&tweet_mode=extended' # to prevent tweet truncation
                                    , '"')
                             , intern = T))
   return(result)
