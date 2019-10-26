@@ -21,8 +21,8 @@ twitter_oauth2 <- function(consumer_api_key, consumer_secret_api_key) {
 }
 
 get_channel_stats <- function(channel = 'ChelseaFC') {
-  # max num_tweets is 200
-  # https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-user_timeline
+  # Returns a variety of information about one or more Users specified
+  # https://developer.twitter.com/en/docs/labs/tweets-and-users/api-reference/get-users-v1
   result <- fromJSON(system(paste0(.env_twitter$request_header
                                    , 'https://api.twitter.com/labs/1/users?'
                                    , 'usernames=', channel
@@ -34,6 +34,7 @@ get_channel_stats <- function(channel = 'ChelseaFC') {
 
 get_twitter_channel_tweets <- function(channel = 'ChelseaFC', num_tweets = 200) {
   # max num_tweets is 200
+  # Returns a collection of the most recent Tweets posted by the user
   # https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-user_timeline
   result <- fromJSON(system(paste0(.env_twitter$request_header
                                    , 'https://api.twitter.com/1.1/statuses/user_timeline.json?'
@@ -47,7 +48,8 @@ get_twitter_channel_tweets <- function(channel = 'ChelseaFC', num_tweets = 200) 
 
 search_twitter_query <- function(query = 'Chelsea Football', num_tweets = 100, until = Sys.Date()-7) {
   # max num_tweets is 100
-  # https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-user_timeline
+  # Returns a collection of relevant Tweets matching a specified query (Standard search api)
+  # https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
   result <- fromJSON(system(paste0(.env_twitter$request_header
                                    , 'https://api.twitter.com/1.1/search/tweets.json?'
                                    , 'q=', URLencode(query)
