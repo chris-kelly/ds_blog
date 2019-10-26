@@ -52,7 +52,7 @@ search_twitter_query <- function(query = 'Chelsea Football', num_tweets = 100, u
   # https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
   result <- fromJSON(system(paste0(.env_twitter$request_header
                                    , 'https://api.twitter.com/1.1/search/tweets.json?'
-                                   , 'q=', URLencode(query)
+                                   , 'q=', gsub(pattern = '#', replacement = '%23', URLencode(query))
                                    , '&count=', num_tweets
                                    , '&until=', until
                                    , '&tweet_mode=extended' # to prevent tweet truncation
