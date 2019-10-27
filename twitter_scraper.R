@@ -20,43 +20,39 @@ twitter_oauth2 <- function(consumer_api_key, consumer_secret_api_key) {
   
 }
 
-get_channel_stats <- function(channel = 'ChelseaFC') {
-  # Returns a variety of information about one or more Users specified
-  # https://developer.twitter.com/en/docs/labs/tweets-and-users/api-reference/get-users-v1
+twitter_oauth2('XRWBeVs7sWQ0vpCpfSX9L1VPw', 'Jso9nW10QTiZolbiJtUpb66fimoEZEZXYAuAiTihUzJBKdf9sB')
+
+generic_api_call <- function(api = 'https://api.twitter.com/labs/1/users'
+                             , param_list = list(usernames = 'ChelseaFC'
+                                                 , format = 'detailed')) {
+  params <- lapply(param_list, FUN = function(param) gsub(pattern = '#', replacement = '%23', URLencode(as.character(param))))
   result <- fromJSON(system(paste0(.env_twitter$request_header
-                                   , 'https://api.twitter.com/labs/1/users?'
-                                   , 'usernames=', channel
-                                   , '&format=detailed'
+                                   , api, '?'
+                                   , paste0(paste0(names(params), '=', params), collapse = '&')
                                    , '"')
                             , intern = T))
   return(result)
+  
 }
 
-get_twitter_channel_tweets <- function(channel = 'ChelseaFC', num_tweets = 200) {
-  # max num_tweets is 200
-  # Returns a collection of the most recent Tweets posted by the user
-  # https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-user_timeline
-  result <- fromJSON(system(paste0(.env_twitter$request_header
-                                   , 'https://api.twitter.com/1.1/statuses/user_timeline.json?'
-                                   , 'screen_name=', channel
-                                   , '&count=', num_tweets
-                                   , '&tweet_mode=extended' # to prevent tweet truncation
-                                   , '"')
-                            , intern = T))
-  return(result)
-}
+# get_channel_stats
+# Returns a variety of information about one or more Users specified
+# https://developer.twitter.com/en/docs/labs/tweets-and-users/api-reference/get-users-v1
+result <- generic_api_call(api = 'https://api.twitter.com/labs/1/users'
+                           , param_list = list(usernames = 'ChelseaFC'
+                                               , format = 'detailed'))
 
-search_twitter_query <- function(query = 'Chelsea Football', num_tweets = 100, until = Sys.Date()-7) {
-  # max num_tweets is 100
-  # Returns a collection of relevant Tweets matching a specified query (Standard search api)
-  # https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
-  result <- fromJSON(system(paste0(.env_twitter$request_header
-                                   , 'https://api.twitter.com/1.1/search/tweets.json?'
-                                   , 'q=', gsub(pattern = '#', replacement = '%23', URLencode(query))
-                                   , '&count=', num_tweets
-                                   , '&until=', until
-                                   , '&tweet_mode=extended' # to prevent tweet truncation
-                                   , '"')
-                            , intern = T))
-  return(result)
-}
+# get_twitter_channel_tweets (max num_tweets is 200)
+# Returns a collection of the most recent Tweets posted by the user
+# https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-user_timeline
+result <- generic_api_call(api = 'https://api.twitter.com/1.1/statuses/user_timeline.json'
+                           , param_list = list(screen_name = 'ChelseaFC'
+                                               , count = 200
+                                               , tweet_mode = 'extended')) # tweet_mode=extended to prevent tweet truncation
+
+# Returns a collection of relevant Tweets matching a specified query (Standard search api)
+result <- generic_api_call(api = 'https://api.twitter.com/1.1/search/tweets.json'
+                           , param_list = list(q = 'Chelsea Football'
+                                               , count = 200
+                                               , until = Sys.Date()-7
+                                               , tweet_mode = 'extended'))
