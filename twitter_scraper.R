@@ -20,7 +20,7 @@ twitter_oauth2 <- function(consumer_api_key, consumer_secret_api_key) {
   
 }
 
-twitter_oauth2('XRWBeVs7sWQ0vpCpfSX9L1VPw', 'Jso9nW10QTiZolbiJtUpb66fimoEZEZXYAuAiTihUzJBKdf9sB')
+twitter_oauth2()
 
 generic_api_call <- function(api = 'https://api.twitter.com/labs/1/users'
                              , param_list = list(usernames = 'ChelseaFC'
@@ -56,3 +56,17 @@ result <- generic_api_call(api = 'https://api.twitter.com/1.1/search/tweets.json
                                                , count = 200
                                                , until = Sys.Date()-7
                                                , tweet_mode = 'extended'))
+
+
+# Returns a cursored collection of user IDs for every user following the specified user.
+result <- generic_api_call(api = 'https://api.twitter.com/1.1/followers/ids.json'
+                           , param_list = list(screen_name = 'ChelseaFC'
+                                               , cursor = -1
+                                               , count = 5000))
+
+# Returns a cursored collection of user IDs for every user the specified user is following (otherwise known as their "friends").
+result <- generic_api_call(api = 'https://api.twitter.com/1.1/friends/ids.json'
+                           , param_list = list(user_id = '1188535771910885376'
+                                               , cursor = -1
+                                               , count = 5000))
+
