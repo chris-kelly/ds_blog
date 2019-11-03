@@ -9,7 +9,6 @@ output:
 ---
 
 ```{r setup, echo = FALSE}
-# knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(
 	fig.height = 7,
 	fig.width = 10,
@@ -70,33 +69,48 @@ np_heads_actprob <- round(binomial_probability(n*p,n,p),4)*100
 
 ```
 
-But in the real world, its not possible to take lots of samples over and over again - and we generally just take one. Taking a sample one time, we might observe `r k` heads. This is equivalent to creating a sample of size $`r n`$ and observing a mean probability of $`r sample_mean`$.
+But in the real world, it's not possible to take lots of samples over and over again - and we generally just take one. Taking a sample one time, we might observe `r k` heads. This is equivalent to creating a sample of size $`r n`$ and observing a mean probability of $`r sample_mean`$.
 
-We don't know what the true probability of flipping heads is ($\theta$), but we can plot the likelihood of observing `r k` heads for every possible probability of flipping heads the coin could have. On the graph below, for every possible value that the probability of flipping heads could be on the x axis (somewhere between 0 and 1), the likelihood of observing $`r k`$ heads is plotted on the y axis, giving the orange line. For example, the likelihood of observing $`r k`$ heads if the probablity of flipping heads is $`r k/n`$ is $`r k_heads_maxprob`\%`$. If the probablity of flipping heads is actually $`r p`$, then the likelihood of flipping `r k` heads in our sample is only $`r k_heads_actprob`\%$. 
+We don't know what the true probability of flipping heads is ($\theta$), but we can plot the likelihood of observing `r k` heads for every possible $\theta$ the coin might be. On the left graph below, for every possible value that the probability of flipping heads could be on the x axis (somewhere between 0 and 1), the likelihood of observing $`r k`$ heads is plotted on the y axis, giving the orange line. For example, the likelihood of observing $`r k`$ heads if the probablity of flipping heads is $`r k/n`$ is $`r k_heads_maxprob`\%`$. If the probablity of flipping heads is actually $`r p`$, then the likelihood of flipping `r k` heads in our sample is only $`r k_heads_actprob`\%$. 
 
-It appears most probable from our sample then that our true probability is indeed `r sample_mean`, which makes sense - the most likely probability is what we observe as the mean in our sample. Thus, a frequentist would conclude that the most likely value of $\theta$ is $`r sample_mean`$.
+It appears most probable from our sample then that our true probability is indeed `r sample_mean` - the most likely probability is what we observe as the mean in our sample (the maximum likelihood estimation is ` rsample_mean`). Thus, a frequentist would conclude that the most likely value of $\theta$ is $`r sample_mean`$, and that the true value of $\theta$ is hopefully near to it.
 
-Note that this is also equivalent to saying that, after observing evidence of the sample mean being $`r sample_mean`$, our best estimate for the likelihood of observing different sample means follows the orange probability distribution. This interpretation is important when comparing to the true mean (and later when thinking about Bayesian). In fact, the true probability distribution of sample means conditioned by $\theta$ is plotted in green, having a mean of $`r p`$.
+However, despite treating the true $\theta$ as a fixed (non-random) value, frequentists acknowledge there is random sampling error. Even if the probability of flipping heads remaining constant, sometimes there will be `r k` heads, sometimes there will be `r n` heads etc simply due to chance. We can illustrate this by plotting the likelihood of observing different numbers of heads given a fixed value of $\theta$. In the graph on the right, the probability of getting different numbers of heads between 0 and `r n` is plotted in green if the value of theta is $`r k/n`$, and blue if the probability is $`r p`$.
 
-In this example then (and in many others), it can be seen then that just taking one (small) sample can result in an estimated probability that is quite different.
+In this way then, despite believing the actual (population) probability $\theta$ to be fixed at one value (and from the sample, the most probable being $`r k/n`$), the graph on the right illustrates how frequentists believe that the number of heads observed is a random variable (conditioned by $\theta$). By random variable, this means that the number of heads could be many different values before sampling (0-`r n`) rather than being pre-determined/fixed as how they treat $\theta$. The likelihood of observing any of these possible values is conditioned by the fixed probability $\theta$ as per the distribution on the right (if the true value of $\theta$ is $`r p`$, then observing $`r p*n`$ heads in our sample is a lot more likely than observing $`r n`$, and observing $`r k`$ heads is very unlikely).
 
 ``` {r, fig.width=10, fig.height=7}
-x <- seq(0,1,length=100+1)
-likelihood_est <- sapply(x, FUN = function(theta) {binomial_probability(p = theta, k = k,  n = n)})
-likelihood_act <- sapply(x, FUN = function(theta) {binomial_probability(p = theta, k = n*p,  n = n)})
 
-plot_ly(type = 'scatter', mode = 'lines') %>%
-  add_trace(x = x, y = likelihood_est, name = 'Estimated from sample') %>%
-  add_trace(x = x, y = likelihood_act, name = 'Actual likelihood') %>%
-  layout(title = "Likelihood function: X ~ Binom(n,p)"
-         , xaxis = list(title = 'theta')
-         , yaxis = list(title = 'likelihood'))
+# for all the different values of theta, p(H=2|θ)
+theta_prob_k_heads <- sapply(seq(0,1,0.01), FUN = function(p) binomial_probability(k=k,n=n,p=p))
+# for all the different values of outcome k, p(H=k|θ=0.2)
+likelihood_est <- sapply(seq(0,10,1), FUN = function(s) {binomial_probability(k=s,n=n,p=k/n)})
+# for all the different values of outcome k, p(H=k|θ=0.5)
+likelihood_act <- sapply(seq(0,10,1), FUN = function(s) {binomial_probability(k=s,n=n,p=p)})
+
+
+subplot(
+  plot_ly(type = 'scatter', mode = 'lines') %>%
+    add_trace(x = seq(0,1,0.01), y = theta_prob_k_heads, name = paste0('P(H=',k,'|θ)')) %>%
+    layout(xaxis = list(title = 'θ'))
+  , plot_ly(type = 'scatter', mode = 'lines+markers') %>%
+    add_trace(x = seq(0,10,1), y = likelihood_est, name = paste0('p(H=k|θ=',k/n,')')) %>%
+    add_trace(x = seq(0,10,1), y = likelihood_act, name = paste0('p(H=k|θ=',p,')')) %>%
+    layout(xaxis = list(title = '# heads'))
+  , shareY = T
+  , nrows = 1)
+
+# 
+# plot_ly(type = 'scatter', mode = 'lines') %>%
+#   add_trace(x = x, y = likelihood_est, name = 'Estimated from sample') %>%
+#   add_trace(x = x, y = likelihood_act, name = 'Actual likelihood') %>%
+#   layout(title = "Likelihood function: X ~ Binom(n,p)"
+#          , xaxis = list(title = 'theta')
+#          , yaxis = list(title = 'likelihood'))
 ```
 
-In this way then, despite believing the actual (population) probability $\theta$ to be fixed at one value, frequentists believe that the mean of our sample is a random variable (conditioned by $\theta$). By random variable, this means that the number of heads could be many different values before sampling (0-`r n`) rather than being pre-determined/fixed. The likelihood of observing any of these possible values is conditioned by the fixed probability $\theta$,  as per the distribution above - (if the true value of $\theta$ is $`r p`$, then observing $`r p*n`$ heads in our sample is a lot more likely than observing $`r n`$).
-
 Hence, to acknowledge that there is randomness associated with this sample mean, frequentists construct confidence intervals. Again to follow the frequentist interpretation, a 95% confidence interval means that, if the sampling proceedure was repeated many, many times, that 95% of the time the true value of $\theta$ would fall within the confidence interval.
-*(Technical note - this is not the same as saying that, in one sample, there is a 95% chance that the true value of $\theta$ lies within it. This is because $\theta$ is a fixed value, not a random variable, so it either falls within the sample confidence interval or not.)*
+*(Nuanced note - this is not the same as saying that, in one sample, there is a 95% chance that the true value of $\theta$ lies within it. This is because $\theta$ is a fixed value, not a random variable, so it either falls within the sample confidence interval or not.)*
 
 ``` {r, fig.width=10, fig.height=7}
 
@@ -225,7 +239,7 @@ P(\text{biased}|H=`r k`)
 =\frac{`r round(biased_coin_k_prob,4)` \times 0.1}{`r round(fair_coin_k_prob,4)` + `r round(biased_coin_k_prob,4)`}=`r round(biased_coin_prob, 4)`
 $$
 
-In other words, our prior belief (before sampling and observing any data) was that the likelihood of our coin having $\theta$ equal to $`r p`$ was $90\%$, and the likelihood of it having theta equal to $`r k/n`$ was $10\%$. After observing `r k` heads, we update our beliefs, so that the likelihood of the probability of our coin flipping heads ($\theta$) being equal to 0.5 is now equal to `r percent(fair_coin_prob)`, and of it being equal to `r sample_mean` being `r percent(biased_coin_prob)`
+In other words, our prior belief (before sampling and observing any data) was that the likelihood of our coin having $\theta$ equal to $`r p`$ was $90\%$, and the likelihood of it having theta equal to $`r k/n`$ was $10\%$. After observing `r k` heads, we update our beliefs, so that the likelihood of the probability of our coin flipping heads ($\theta$) being equal to $0.5$ is now equal to $`r round(fair_coin_prob*100,2)`\%$, and of it being equal to $`r sample_mean`$ being $`r round(biased_coin_prob*100,2)`\%$
 
 It is this incorporation of prior data that is either seen as Bayesian's biggest advantage or pitfall. On the one hand, experiments are not abstract devices, and some knowledge about the process being investigated before obtaining the data is known and arguably should be incorporated. On the other, incorporating subjective opinions, particularly strong ones, may mean that you do not learn the true values you are trying to derive. Bayesian is thus analysis that uses a set of observations to change opinion rather than as a means to determine ultimate truth.
 
@@ -237,6 +251,7 @@ To help describe bayesian analysis, the following terms are often used:
 * Likelihood function: $Pr(X|\theta)$ - the probability of $\theta$ given the data  observed (*Represents the new data available*). For example, $P(H=`r k`|Biased)=`r biased_coin_k_prob`$
 * Joint probability density function: $Pr(X,\theta)=Pr((X|\theta).Pr(\theta)$ - used to modify prior beliefs through Bayes Theorem
 * Posterior distribution: $Pr(\theta|X)$ - the *posterior density* represents the knowledge about the model parameters after observing the data (*Represents what is now thought given both prior data and data just obtained*)
+* Conjugancy: occurs when the posterior distribution is in the same family of probability density functions as the prior belief, but with new parameter values (updated to reflect what has been learned from the data). The posterior comes from the same family as the prior, rather than the data's distribution.
 
 And thus, we can then describe Bayes Theorem:
 
@@ -278,7 +293,7 @@ $$
 \theta^{a-1+k}\times(1-\theta)^{b-1+n-k} \sim \text{Beta}[a+k,b+n-k] 
 $$
 
-(Note this is an approximation - the actual equality is specified later)
+(Note this is an approximation - the actual equality is specified later, as an example of conjugancy)
 
 ``` {r, fig.width=10, fig.height=7}
 
@@ -319,6 +334,8 @@ plot_ly(type = 'scatter', mode = 'lines') %>%
 ```
 
 As you can see, with a very 'objective' prior, the Bayesian posterior is very similar to the result derived from the frequentist evidence-only distribution (the Bayesian likelihood function).
+
+Note here that this a good example of conjugancy - see the section below on what that means exactly.
 
 In the two Bayesian examples above though, we either had a very weak prior (the uniform distribution) or a very strong prior (only two available values for theta, and 90% likelihood the coin is fair). Bayesian tends to most valuable where both the new data and past prior have more equal influence, and the posterior forming a distribution that sits somewhere between that estimated by the prior and likelihood function: 
 
@@ -377,7 +394,9 @@ But finding this can be tricky, particularly with computing closed intervals. Th
 * Credible intervals: Given the mean of the distribution, expand the range outwards equally until 95% of the area under the curve is captured.
 * Highest posterior density: Imagine a horizontal line moving slowly towards the x axis, intercepting the distribution twice. Once the 
 
-```{r}
+(NOTE THE GRAPH BELOW IS WRONG, NEEDS FIXING)
+
+```{r, fig.width=10, fig.height=7, fig.fullwidth = TRUE}
 find_binomial_credible_interval <- function(k, n, p, learning_rate = 0.5, initial_width = 0.1, criterion = 0.1, max_iterations = 1000, precision = 4) {
   bit <- initial_width/2 # amount to push away from mean
   for(i in 1:max_iterations) {
@@ -451,33 +470,15 @@ plot_ly(type = 'scatter', mode = 'lines') %>%
 
 Some Bayesians argue though that credible intervals and HPDs are only really something that are useful to compare to frequentist interpretations, as the distribution is already given by the posterior.
 
-## Thinking about Bayesian in terms of predicting things
+## Conjugancy (beta-binomial)
 
-There are two sources of uncertaint when building statistical models to predict things:
-
-* Uncertainty in the parameter values which have been estimated on the basis of past data (for example, a coefficient estimated in a regression model)
-* Uncertainty due to the fact any future value is itself a random event (because future events are essentially samples that have error conditioned by $\theta$)
-
-Classical models deal with point 2, making a point estimate in the future based on the parameters estimated from past data. This is equivalent to forming a likelihood (i.e. incorporating new data).
-What they don't do though is think about point 1, that the model estimated itself might be incorrect since the true values of $\theta$ are not fixed, and this is equivalent to not building in any prior beliefs. In a way, by giving a point estimate, it generates a false sense of precision.
-
-
-
-``` {r, echo = F, fig.width=10, fig.height=7}
-
-
-
-```
-
-
-
-Now for the geeks - you might have already noticed how eerily similar the beta distribution is to the binomial distribution from the formula - and in fact you can use the beta distribution as a continous function equivalent to the binomial function:
+Now to get geeky - you might have already noticed how eerily similar the beta distribution is to the binomial distribution from the formula - and in fact you can use the beta distribution as a continous function equivalent to the binomial function. 
 
 $$
 p(\text{H=}k| \theta) \sim \theta^k\times(1-\theta)^{n-k} \sim \text{Beta}[k+1,n-k+1]
 $$
 
-Both binomial and beta likelihoods are scaled though (normalized), so that the sum of their probabilites total 1 though.
+Both binomial and beta likelihoods are scaled though (normalized), so that the sum of their probabilites total 1.
 For the beta distribution, the scaling is achieved like this:
 
 $$
@@ -488,15 +489,209 @@ Where
 $$
 \frac{1}{\text{B}(\alpha,\beta)} = \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha) \times \Gamma(\beta)} = \frac{(\alpha+\beta-1)!}{(\alpha-1)! \times (\beta-1)!}
 $$
-So if successes $ \alpha = k+1 $ and failures $ \beta = n - k + 1$, then:
+
+So if successes $\alpha = k+1$ and failures $\beta = n - k + 1$, then:
 
 $$
 \frac{(\alpha+\beta-1)!}{(\alpha-1)! \times (\beta-1)!}=\frac{((k+1)+(n-k+1)-1)!}{((k+1)-1)! \times ((n-k+1)-1)!}=\frac{(n+1)!}{(k)!\times(n-k)!} =
 {n+1 \choose k } = (n+1) \times {n \choose k }
 $$
+
+Now we define the binomial distribution for comparison:
+
+$$
+\text{Binom}(n,p) = {n \choose k } [\theta^{k}\times(1-\theta)^{n-k}]  
+$$
+
+
 And thus:
 
 $$
 Beta[k+1,n-k+1] = (n+1) \times \text{Binom}(n,p)
 $$
+
+This relationship helps us combine binomial likelihoods and beta priors to create a posterior in what is called **conjugancy**. Conjugancy occurs when the posterior distribution is in the same family of probability density functions as the prior belief, but with new parameter values (updated to reflect what has been learned from the data). The posterior comes from the same family as the prior, rather than the data's distribution.
+
+
+All the three coin examples above were **examples of conjugancy**. For example, the second had a prior that was uniform, expressed as a beta distribution, whereas the likelihood function was a binomial distribution. The posterior distribution was thus beta, since it is the same family of probability density functions as the prior belief (beta), but with new parameter values learnt from the probability mass function derived from the new data. Note that the posterior did not follow a binomial distribution, but followed a beta one, since this is what the prior used. Conjugates are thus very useful in helping derive the posterior distribution.
+
+Without conjugancy, one has to do the integral, which is often impossible to actually evaluate, and is one of the reasons bayesian was not popular in the 20th century (before computing allowed researchers to compute integrals numerically). Nowadays, sampling methods such as Markov-chain monte-carlo (MCMC) are often used to simulate the posterior distribution.
+
+## Conjugancy (gamma-poisson)
+
+As well as the beta-binomial conjugate family, we also have the gamma-poisson conjugate family. 
+
+The poisson function is specified as:
+
+$$
+P(X=k)=\frac{\lambda^{k}}{k!}e^{-\lambda} \text{ for } k=0,1,...,
+$$
+
+Whereas the gamma family is related to the gamma function (witk $k,\theta$ and $\alpha,\beta$ parameterizations listed below):
+
+$$
+f(x)=\frac{1}{\Gamma(k)\theta^k}x^{k-1}e^{-x/\theta}=\frac{\beta^{\alpha}}{\Gamma(k)}x^{\alpha-1}e^{-\beta x}
+$$
+And hence we can see that that where $n$ is a positive integer, and $\theta=1$, we observe the special case that $\Gamma(k)=(k-1)!$ so that 
+
+NEED TO WORK ON THIS BIT
+
+$$
+\frac{1}{\Gamma(k)\times\theta^k}x^{k-1}e^{-x/\theta}=
+\frac{1}{(k-1)!\times1^k}x^{k-1}e^{-x/\theta}=
+\frac{\lambda^{k}}{k!}e^{-\lambda}
+$$
+
+## Thinking about Bayesian in terms of predicting things
+
+There are two sources of uncertainty when building statistical models to predict things:
+
+* Uncertainty due to the fact any future value is itself a random event, $P(y|\theta)$ (because future events are essentially samples that have error conditioned by $\theta$)
+* Uncertainty in the parameter values which have been estimated on the basis of past data, $P(\theta|X)$ (for example, a coefficient estimated in a regression model)
+
+Classical models deal with point 1, making a point estimate in the future based on the 'best' parameters estimated from past data. This is equivalent to forming a likelihood (i.e. incorporating new data).
+What they don't do though is think about point 2, that the seemingly optimum model estimated itself might be incorrect since the true values of $\theta$ are not fixed, and this is equivalent to not building in any prior beliefs. In a way, by giving a point estimate, the models generate a false sense of precision, and the confidence intervals arounds any estimate is only predicated on the idea there is sampling randomness, rather than randomness associated with $\theta$ itself.
+
+In other words, classical models seek to best fit the new evidence (traditionally through maximum likelihood estimation for generalized linear models), whereas bayesian models incorporate prior beliefs as well.
+
+Imagine then, if we want to estimate the impact of x on y to make a future prediction, we can do the following:
+
+$$
+f(y|x)= \int f(y|\theta,x)f(\theta|x) \partial(\theta)
+$$
+
+Where $f(y|\theta,x)$ represents the modelling random sampling error as in frequentist regression (the likelihood function), and $f(\theta|x)$ representing the error arising from $\theta$ being a random variable rather than being treated as a fixed quantity.
+
+Now why is it an integral? Let's think of the coin example above where there are only two types of coins in the economy. If we want to know what is the probability we get heads, rather than the probability that we have a fair or a biased coin. 
+
+$$
+P(\text{heads}|k=2) = \\
+P(\text{heads}|\text{fair},k=2) \times P(\text{fair}|k=2)\\
++ P(\text{heads}|\text{biased},k=2) \times P(\text{biased}|k=2)
+$$
+
+As before, we summarise the probability mass function relating to $\theta$ as being 0.5 (fair) for 90% of coins in the economy, and $`r k/n` (biased) for 10% of these coins, which gives us the following:
+
+$$
+P(\text{heads|k=2}) = \sum_{\theta}{P(\text{heads}|\theta\text{,k=2}) \times P(\theta|\text{k=2}) }
+$$
+
+And by taking into account all the possible values that theta can take, we are essentially integrating along the 
+
+$$
+P(\text{heads|k=2}) = \int P(heads|\theta,k=2) \text{ }P(\theta|k=2) \text{ } \partial(\theta)
+\\
+\text{where }\theta =
+\begin{cases}
+`r k/n` & 10\% \text{ of the time}\\
+0.5 & 90\% \text{ of the time}\\
+\end{cases}
+$$
+
+
+NEED TO RE-WRITE EVERYTHING BELOW THIS
+
+!!!!!!!!!!!!!
+!!!!!!!!!!!!!
+!!!!!!!!!!!!!
+!!!!!!!!!!!!!
+!!!!!!!!!!!!!
+!!!!!!!!!!!!!
+!!!!!!!!!!!!!
+!!!!!!!!!!!!!
+!!!!!!!!!!!!!
+
+
+Another way of looking at it is by rearranging bayes theroem:
+
+$$
+P(\theta|X) =\frac{P(X|\theta) \times P(\theta)}{P(X)} = \frac{P(X|\theta) \times P(\theta)}{P(X|\theta) \times P(\theta) + P(X|\theta') \times P(\theta')} \\
+
+$$
+
+
+
+
+And hence it can be seen that to get the full probability distribution associated with getting heads, you need to assess all possible values that theta could take.
+
+
+$$
+P(y|X) = \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
+$$
+
+$$
+P(y|X) 
+= \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
+= P(heads|k=2) 
+= \frac{P(\text{heads}|\theta,k=2) \times P(\theta|k=2)}{P(\theta|\text{heads,k=2})}
+$$
+
+
+$$
+P(\text{heads|k=2}) = P(\text{heads}|\text{fair,k=2}) \times P(\text{fair|k=2}) + P(\text{heads}|\text{biased,k=2}) \times P(\text{biased|k=2})
+$$
+
+As before, we summarise the probability mass function relating to $\theta$ as being 0.5 (fair) for 90% of coins in the economy, and `r k` (biased) for 10% of these coins, which gives us the following:
+
+$$
+P(\text{heads|k=2}) = P(\text{heads}|\theta\text{,k=2}) \times P(\theta|\text{k=2}) 
+$$
+
+$$
+P(\text{heads}) = P(\text{heads}|\text{fair}) \times P(\text{fair}) + P(\text{heads}|\text{biased}) \times P(\text{biased})
+$$
+
+
+$$
+P(X,\theta|k=2) = \frac{P(\text{heads}|\theta,k=2) \times P(\theta|X)}{P(heads|k=2)}
+$$
+
+$$
+P(y|X) = \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
+$$
+
+
+Let's say we believe the sampling error of y to follow a normal distribution, conditioned by $\theta$ (capturing the first source of uncertainty), which we would normally solve through MLE:
+
+$$
+f(y|\theta) = \frac{1}{\sigma\sqrt{2\pi}}\text{exp}(\frac{(y-\theta)^2}{2\sigma^2})
+$$
+$$
+f(y|\theta,X) = \frac{1}{\sigma\sqrt{2\pi}}\text{exp}(\frac{(y-X\beta)^2}{2\sigma^2})
+$$
+
+
+Then we just need to derive $f(\theta|x)$ in order to make a future prediction through bayes (and this term captures the error associated with our estimation of theta from the exogenous variables). 
+
+Now for frequentists, the pdf  $f(\theta|x)$ is equal to 1 at the true value of theta, and zero elsewhere, as theta is fixed (so there is only one perfect value).
+
+Though for Bayesians, the pdf is conditioned by prior beliefs about $\theta$. These are represented as a posterior approximated from the product of the likelihood of observing the exogenous variables given $\theta$, and the prior beliefs associated with $\theta$:
+
+$$
+f(\theta|x) \sim f(\theta) \times f(x|\theta)
+$$
+To capture the randomness of the $\theta$, we might also believe our prior $f(\theta)$ follows a normal distribution, but with mean $E(X)=b$ and variance $Var(X)=d^2$. As such, the distribution thus described is $X \sim N(b,d^2)$
+
+Then the prior can be derived from the normal pdf $x$:
+
+$$
+f(\theta) = \frac{1}{d\sqrt{2\pi}}\text{exp}(\frac{(\theta-b)^2}{2d^2})
+$$
+
+Now let's take the observed data $x=(x_1,x_3,...,x_n)$ and treat it as a random sample of size $n$ of a **random** variable $X$ with mean $E(X)=\theta$ and variance $Var(X)=\sigma^2$, and follows a normal distribution thus described as $X \sim N(\theta,\sigma^2)$
+
+Then the likelihood for every obervation $x_i$ from the whole sample $x$:
+
+$$
+f(x|\theta) = \prod_{i=1}^{n} f(x_i|\theta) = \prod_{i=1}^{n} \frac{1}{\sigma\sqrt{2\pi}}exp(\frac{(x_i-\theta)^2}{2\sigma^2})
+$$
+
+
+``` {r, echo = F, fig.width=10, fig.height=7}
+
+
+
+```
+
+
 
