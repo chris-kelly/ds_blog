@@ -1,6 +1,8 @@
 ---
 title: "Maximum Likelihood Estimation"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 This is a notebook to show how the coefficients for logit are derived
