@@ -1637,16 +1637,18 @@ summary {
 </div>
 
 
-<p>This is a notebook to show how the coefficients for logit are derived</p>
+<p>This is a notebook to show how the coefficients for logit are derived.</p>
+<p>We can model our observation likelihoods by splitting into successes (where <span class="math inline">\(y=1\)</span>) and failures (where <span class="math inline">\(y=0\)</span>) in the following way:</p>
 <p><span class="math inline">\(\begin{aligned} P(y|\beta) = P(y_1, y_2,...,y_n|\beta) = \prod_{y=1}P(y_{i}=1)^{y} \times \prod_{y=0}(1-P(y_{i}=1))^{1-y} \end{aligned}\)</span></p>
-<p>Assume <span class="math inline">\(P(y)\)</span> is predicted using a logistic function, in this case termed:</p>
+<p>(In this equation, for any observed <span class="math inline">\(y_i=1\)</span>, then this cancels down to <span class="math inline">\(P(y_{i}=1))\)</span>, and for a true <span class="math inline">\(y_i=0\)</span>, then this cancels down to <span class="math inline">\(1-P(y_{i}=1))\)</span>).</p>
+<p>We can then use the log likelihood to change from product to sum:</p>
+<p><span class="math inline">\(\begin{aligned} &amp; \leftrightarrow \sum_{y=1}{\text{log}(P(y_{i}=1)^{y})} + \sum_{y=0}{\text{log}(1-P(y_{i}=1))^{1-y})} \\ &amp; = \sum_{i=1}^{n}{y\text{log}(P(y_{i}=1)) + (1-y)\text{log}(1-P(y_{i}=1))} \end{aligned}\)</span></p>
+<p>Which as a sum is now easier to differentiate to derive the optimal coefficients to minimize the (log) loss:</p>
+<p><span class="math inline">\(\begin{aligned} &amp; \leftrightarrow \frac{\partial}{\partial\beta_j}P(y|\beta) \\ &amp; = \frac{\partial}{\partial\beta_j}\sum{y\text{log}(P(y_{i}=1)) + (1-y)\text{log}(1-P(y_{i}=1))} \\ &amp; =\sum_{i=1}^{n}{y\frac{\frac{\partial}{\partial\beta_j}P(y_{i}=1)}{P(y_{i}=1)} + (1-y)\frac{\frac{\partial}{\partial\beta_j}P(y_{i}=1)}{P(y_{i}=1)}} \end{aligned}\)</span></p>
+<p>Specify now that <span class="math inline">\(P(y_{i}=1)\)</span> is estimated using a linear combination of exogenous regressors, releated to the response variable via a logistic link function, in this case termed:</p>
 <p><span class="math inline">\(P(y|\beta)=\Lambda(X'\beta)=(1+e^{-X'\beta})^{-1}\)</span></p>
-<p>Then we can use the log likelihood to change from product to sum:</p>
-<p><span class="math inline">\(\begin{aligned} &amp; = \prod_{y=1} \Lambda(X'\beta)^{y} \times \prod_{y=0}(1-X'\beta)^{1-y} \\ &amp; = \sum{\text{log}(\Lambda(X'\beta)^{y})} + \sum{\text{log}(\Lambda(1-X'\beta)^{1-y})} \\ &amp; = \sum_{i=1}^{n}{y\text{log}(\Lambda(X'\beta)) + (1-y)\text{log}(\Lambda(1-X'\beta))} \end{aligned}\)</span></p>
-<p>Which as a sum is now easier to differentiate to get the coefficients:</p>
-<p><span class="math inline">\(\begin{aligned} &amp; \leftrightarrow \frac{\partial}{\partial\beta_j}P(y|\beta) \\ &amp; = \frac{\partial}{\partial\beta_j}\sum{y\text{log}(\Lambda(X'\beta)) + (1-y)\text{log}(\Lambda(1-X'\beta))} \\ &amp; =\sum_{i=1}^{n}{y\frac{\frac{\partial}{\partial\beta_j}\Lambda(X'\beta)}{\Lambda(X'\beta)} + (1-y)\frac{\frac{\partial}{\partial\beta_j}\Lambda(X'\beta)}{\Lambda(X'\beta)}} \end{aligned}\)</span></p>
-<p>Which you can simplify in the following way using the logistic function:</p>
-<p><span class="math inline">\(\begin{aligned} &amp; = \frac{\partial}{\partial\beta_j}\Lambda(X'\beta) \\ &amp; = \frac{\partial}{\partial\beta_j}(1+e^{-X'\beta})^{-1} \\ &amp; = -1(1+e^{-X'\beta})^{-2} \times -x_je^{-X\beta} \\ &amp; = x_j\left[\frac{e^{-X\beta}}{(1+e^{-X'\beta})^{2}}\right] \\ &amp; = x_{j}\left[\frac{1}{1+e^{-X'\beta}} \times \frac{e^{-X\beta}}{1+e^{-X'\beta}}\right] \\ &amp; = x_{j}\left[\frac{1}{1+e^{-X'\beta}} \times \left(1-\frac{1}{1+e^{-X'\beta}}\right)\right] \\ &amp; = x_{j}\left[\Lambda(X'\beta)\times\left(1-\Lambda(X'\beta)\right)\right] \end{aligned}\)</span></p>
+<p>Then you can simplify the above equation in the following way:</p>
+<p><span class="math inline">\(\begin{aligned} &amp; \frac{\partial}{\partial\beta_j}\Lambda(X'\beta) \\ &amp; = \frac{\partial}{\partial\beta_j}(1+e^{-X'\beta})^{-1} \\ &amp; = -1(1+e^{-X'\beta})^{-2} \times -x_je^{-X\beta} \\ &amp; = x_j\left[\frac{e^{-X\beta}}{(1+e^{-X'\beta})^{2}}\right] \\ &amp; = x_{j}\left[\frac{1}{1+e^{-X'\beta}} \times \frac{e^{-X\beta}}{1+e^{-X'\beta}}\right] \\ &amp; = x_{j}\left[\frac{1}{1+e^{-X'\beta}} \times \left(1-\frac{1}{1+e^{-X'\beta}}\right)\right] \\ &amp; = x_{j}\left[\Lambda(X'\beta)\times\left(1-\Lambda(X'\beta)\right)\right] \end{aligned}\)</span></p>
 <p>And hence derive the optimal maximum log-likelihood coefficient:</p>
 <p><span class="math inline">\(\begin{aligned} &amp; \leftrightarrow \frac{\partial}{\partial\beta_j}P(y|\beta) \\ &amp; =\sum_{i=1}^{n}{y\frac{\frac{\partial}{\partial\beta_j}\Lambda(X'\beta)}{\Lambda(X'\beta)}} \\ &amp; =\sum_{i=1}^{n}{y\frac{x_{j}\left[\Lambda(X'\beta)\times\left(1-\Lambda(X'\beta)\right)\right]}{\Lambda(X'\beta)} + (1-y)\frac{x_{j}\left[\Lambda(X'\beta)\times\left(1-\Lambda(X'\beta)\right)\right]}{1-\Lambda(X'\beta)} } \\ &amp; =\sum_{i=1}^{n}{x_{j}\left[y\left(1-\Lambda(X'\beta)\right) + (1-y)\left(\Lambda(X'\beta)\right)\right]} \end{aligned}\)</span></p>
 

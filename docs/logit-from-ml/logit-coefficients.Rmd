@@ -5,38 +5,40 @@ output:
     df_print: paged
 ---
 
-This is a notebook to show how the coefficients for logit are derived
+This is a notebook to show how the coefficients for logit are derived.
+
+We can model our observation likelihoods by splitting into successes (where $y=1$) and failures (where $y=0$) in the following way:
 
 $\begin{aligned}
 P(y|\beta) = P(y_1, y_2,...,y_n|\beta) = \prod_{y=1}P(y_{i}=1)^{y} \times \prod_{y=0}(1-P(y_{i}=1))^{1-y}
 \end{aligned}$
 
-Assume $P(y)$ is predicted using a logistic function, in this case termed:
+(In this equation, for any observed $y_i=1$, then this cancels down to $P(y_{i}=1))$, and for a true $y_i=0$, then this cancels down to $1-P(y_{i}=1))$).
 
-$P(y|\beta)=\Lambda(X'\beta)=(1+e^{-X'\beta})^{-1}$
-
-Then we can use the log likelihood to change from product to sum:
+We can then use the log likelihood to change from product to sum:
 
 $\begin{aligned}
-& = \prod_{y=1} \Lambda(X'\beta)^{y} \times \prod_{y=0}(1-X'\beta)^{1-y} \\
-& = \sum{\text{log}(\Lambda(X'\beta)^{y})} + \sum{\text{log}(\Lambda(1-X'\beta)^{1-y})} \\
-& = \sum_{i=1}^{n}{y\text{log}(\Lambda(X'\beta)) + (1-y)\text{log}(\Lambda(1-X'\beta))}
+& \leftrightarrow \sum_{y=1}{\text{log}(P(y_{i}=1)^{y})} + \sum_{y=0}{\text{log}(1-P(y_{i}=1))^{1-y})} \\
+& = \sum_{i=1}^{n}{y\text{log}(P(y_{i}=1)) + (1-y)\text{log}(1-P(y_{i}=1))}
 \end{aligned}$
 
-Which as a sum is now easier to differentiate to get the coefficients:
+Which as a sum is now easier to differentiate to derive the optimal coefficients to minimize the (log) loss:
 
 $\begin{aligned}
 & \leftrightarrow \frac{\partial}{\partial\beta_j}P(y|\beta) \\
-& = \frac{\partial}{\partial\beta_j}\sum{y\text{log}(\Lambda(X'\beta)) + (1-y)\text{log}(\Lambda(1-X'\beta))} \\
-& =\sum_{i=1}^{n}{y\frac{\frac{\partial}{\partial\beta_j}\Lambda(X'\beta)}{\Lambda(X'\beta)} + (1-y)\frac{\frac{\partial}{\partial\beta_j}\Lambda(X'\beta)}{\Lambda(X'\beta)}}
+& = \frac{\partial}{\partial\beta_j}\sum{y\text{log}(P(y_{i}=1)) + (1-y)\text{log}(1-P(y_{i}=1))} \\
+& =\sum_{i=1}^{n}{y\frac{\frac{\partial}{\partial\beta_j}P(y_{i}=1)}{P(y_{i}=1)} + (1-y)\frac{\frac{\partial}{\partial\beta_j}P(y_{i}=1)}{P(y_{i}=1)}}
 \end{aligned}$
 
-Which you can simplify in the following way using the logistic function:
+Specify now that $P(y_{i}=1)$ is estimated using a linear combination of exogenous regressors, releated to the response variable via a logistic link function, in this case termed:
+
+$P(y|\beta)=\Lambda(X'\beta)=(1+e^{-X'\beta})^{-1}$
 
 
+Then you can simplify the above equation in the following way:
 
 $\begin{aligned}
-& = \frac{\partial}{\partial\beta_j}\Lambda(X'\beta) \\
+& \frac{\partial}{\partial\beta_j}\Lambda(X'\beta) \\
 & = \frac{\partial}{\partial\beta_j}(1+e^{-X'\beta})^{-1} \\
 & = -1(1+e^{-X'\beta})^{-2} \times -x_je^{-X\beta} \\
 & = x_j\left[\frac{e^{-X\beta}}{(1+e^{-X'\beta})^{2}}\right] \\
