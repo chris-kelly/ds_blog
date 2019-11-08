@@ -34,3 +34,8 @@ vignettes/*.pdf
 # Temporary files created by R markdown
 *.utf8.md
 *.knit.md
+docs/logit-from-ml/.DS_Store
+docs/cox_regression/.DS_Store
+docs/bayesian/.DS_Store
+docs/.DS_Store
+.DS_Store
