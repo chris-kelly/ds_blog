@@ -1,0 +1,69 @@
+---
+title: "Cox Proportional-Hazards Model"
+output:
+  html_notebook:
+    code_folding: hide
+    smart: false
+  html_document: default
+  pdf_document: default
+---
+
+```{r libraries, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+require(plotly)
+```
+
+Let's say we have two towns - one group exhibits storng retention to the product, another weaker retention. How might we try and investigate why this is the case?
+
+Cox regression tries to find the effect of several variables of survival. To do this, Cox regression assumes the drivers in the difference in survivial rates between the two groups is derived from a linear combination of regressors.
+
+The Cox regrssion model is defined like this:
+
+$$
+h(t) = h_{0}(t) \times e^{X'\beta + \epsilon}
+$$
+
+Where:
+
+* $h_{0}(t)$ is the 'baseline' rate of survival over time of one default group
+* $X$ is a series of measures of the differences in exogenous variable between the two curves
+* $\beta$ is an estimation of the magnitude of the impact of those exogenous cariables on survival rate
+
+For example, we might derive the following curves:
+
+``` {r demo_graph, fig.width=10, fig.height=7}
+t <- 1:100
+h0 <- t^-0.1 + runif(100)/20
+x1 <- seq(0.01,1,0.01)
+x_beta <- -1*x1
+h = h0*exp(x_beta + runif(100,-1,1)/10)
+
+plot_ly(type = 'scatter', mode = 'lines') %>%
+  add_trace(x=t,y=h0,name='h0(t)') %>%
+  add_trace(x=t,y=h,name='h(t)') %>%
+  # add_trace(x=t,y=log(h)-log(h0),name="log(h(t)/h0(t))",yaxis = "y2") %>%
+  layout(yaxis2 = list(overlaying = "y", side = "right"))
+
+```
+
+However, in actuality this is very, very similar to ordinary linear regression. Consider the following:
+
+$\begin{aligned}
+h(t) & =h_{0}(t) \times e^{X'\beta+ \epsilon} \\
+& \leftrightarrow \frac{h(t)}{h_{0}} = e^{X'\beta+ \epsilon} \\
+& \leftrightarrow \text{log}\left(\frac{h(t)}{h_{0}}\right) = \text{log}\left(e^{X'\beta+ \epsilon}\right) \\
+& \leftrightarrow \text{log}\left(h(t)\right) - \text{log}\left(h_{0}(t)\right) = X'\beta+ \epsilon
+\end{aligned}$
+
+In other words, at any point in time $t$, the Cox regression predicts the size of the logged differences between the two groups to be a linear combination features $X$. 
+
+We can plot the logged differences on the graph below:
+
+``` {r linear_graph, fig.width=10, fig.height=7}
+plot_ly(type = 'scatter', mode = 'lines') %>%
+  add_trace(x=t,y=log(h)-log(h0),name="log(h(t)/h0(t))") %>%
+  add_trace(x=t,y=x_beta,name="X'b")
+```
+
+And hence we can see that there is a linear relationship between the feature x, and driving lower retention over time.
+
+

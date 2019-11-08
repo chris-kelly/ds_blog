@@ -341,6 +341,13 @@ In the two Bayesian examples above though, we either had a very weak prior (the 
 
 So - let's say the last coin we tried flipping `r n` times got heads `r p*n` times (our prior) and the new coin flipped heads `r k` times (our new evidence). We can then get the following equations:
 
+``` {r, echo=FALSE}
+k1 <- 5
+n1 <- 10
+k2 <- k
+n2 <- 10
+```
+
 $$
 \text{Prior: } \text{Beta}[k_{1},n_{1}-k_{1}] = \text{Beta}[`r k1`,`r n1`-`r k1`] = \text{Beta}[`r k1`,`r n1-k1`]
 $$
@@ -352,11 +359,6 @@ $$
 \text{Posterior: } \text{Beta}[k_{1}+k_{2},n_{1}-k_{1}+n_{2}-k_{2}] = \text{Beta}[`r k1` + `r k2`,`r n1-k1` + `r n2-k2`] = \text{Beta}[`r k1+k2`,`r n1-k1+n2-k2`]
 $$
 ``` {r, fig.width=10, fig.height=7}
-k1 <- 5
-n1 <- 10
-k2 <- k
-n2 <- 10
-
 # prior <- sapply(x, FUN = function(theta) {beta_probability(theta,k1+1,n1-k1+1)/(n1+1)})
 # likelihood_f <- sapply(x, FUN = function(theta) {beta_probability(theta,k2+1,n2-k2+1)/(n2+1)})
 # posterior <- sapply(x, FUN = function(theta) {beta_probability(theta,k1+k2+2,n1-k1+1+n2-k2+1)/(n1+n2+2)})
@@ -602,7 +604,13 @@ NEED TO RE-WRITE EVERYTHING BELOW THIS
 !!!!!!!!!!!!!
 
 
-Another way of looking at it is by rearranging bayes theroem:
+Now because this equation is done through conjugancy, this is easy to evaluate. Another way then of looking at it for this example is by rearranging bayes theroem:
+
+$$
+P(y|X) = \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
+= \frac{P(\text{heads}|\text{fair},k=2) \times P(\theta|X)}{P(\theta|y,X)}
+$$
+
 
 $$
 P(\theta|X) =\frac{P(X|\theta) \times P(\theta)}{P(X)} = \frac{P(X|\theta) \times P(\theta)}{P(X|\theta) \times P(\theta) + P(X|\theta') \times P(\theta')} \\
@@ -611,24 +619,21 @@ $$
 
 
 
-
 And hence it can be seen that to get the full probability distribution associated with getting heads, you need to assess all possible values that theta could take.
 
 
 $$
-P(y|X) = \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
-$$
-
-$$
 P(y|X) 
 = \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
-= P(heads|k=2) 
 = \frac{P(\text{heads}|\theta,k=2) \times P(\theta|k=2)}{P(\theta|\text{heads,k=2})}
 $$
 
 
 $$
-P(\text{heads|k=2}) = P(\text{heads}|\text{fair,k=2}) \times P(\text{fair|k=2}) + P(\text{heads}|\text{biased,k=2}) \times P(\text{biased|k=2})
+P(\text{heads|k=2}) =
+\frac{P(\text{heads}|\text{fair,k=2}) \times P(\text{fair|k=2})}{P(\text{fair}|\text{heads},k=2)} +
+\frac{P(\text{heads}|\text{biased,k=2}) \times P(\text{biased|k=2})}{P(\text{biased}|\text{heads},k=2)} \\
+
 $$
 
 As before, we summarise the probability mass function relating to $\theta$ as being 0.5 (fair) for 90% of coins in the economy, and `r k` (biased) for 10% of these coins, which gives us the following:
@@ -692,6 +697,5 @@ $$
 
 
 ```
-
 
 
