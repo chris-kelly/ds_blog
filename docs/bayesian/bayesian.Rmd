@@ -421,33 +421,35 @@ find_binomial_hpd <- function(k,n,criterion=0.1, initial_movement_size = 0.1, ma
   p <- find_binomial_highest_start_point(precision,k,n)
   left_loc <- p
   right_loc <- p
-  residual <- (1-criterion) - (pbeta(right_loc, k+1, n-k+1)-pbeta(left_loc, k+1, n-k+1))
   bit <- initial_movement_size
-  for(i in 1:1000) {
-    amount_right <- pbeta(right_loc+bit,k+1,n-k+1) - pbeta(right_loc, k+1, n-k+1)
-    amount_left <- pbeta(left_loc, k+1, n-k+1) - pbeta(left_loc-bit, k+1, n-k+1)
-    if(residual > 0) { # need to increase width
-      if(amount_left > amount_right) { # moving more left is more efficient
-        left_loc <- left_loc-bit
-      } else {
-        right_loc <- right_loc+bit;
-      }
-    } else { # need to decrease width
-      if(amount_left > amount_right) { # moving less right is least efficient
-        right_loc <- right_loc-bit;
-      } else {
-        left_loc <- left_loc+bit
-      }
-    }
-    residual <- (1-criterion) - (pbeta(right_loc, k+1, n-k+1)-pbeta(left_loc, k+1, n-k+1))
+  residual <- 1 - criterion
+  
+  for(i in 1:max_iterations) {
+    
     if(abs(residual) < 10^-precision) {
       break()
     } else {
-      bit <- bit - learning_rate*residual
+      if(residual > 0) { # need to increase width
+        if(dbeta(left_loc - bit, k+1, n-k+1) > dbeta(right_loc + bit, k+1, n-k+1)) { # left side pdf is higher
+          left_loc <- left_loc-bit # move left
+        } else { # right side pdf is higher
+          right_loc <- right_loc+bit # move right
+        }
+      } else {
+        # stop()
+        if(dbeta(left_loc - bit, k+1, n-k+1) > dbeta(right_loc + bit, k+1, n-k+1)) { # left side pdf is higher
+          right_loc <- right_loc-bit # move right
+        } else { # right side pdf is higher
+          left_loc <- left_loc+bit # move left
+        }
+      }
+      residual <- (1-criterion) - (pbeta(right_loc, k+1, n-k+1)-pbeta(left_loc, k+1, n-k+1))
+      bit <- bit - abs(learning_rate*residual)
     }
   }
   return(c(left_loc, right_loc))
 }
+
 
 credible_intervals <- find_binomial_credible_interval(k, n, p, max_iterations = 10^3, criterion = 0.1)
 highest_posterior_density <- find_binomial_hpd(k,n, max_iterations = 10^3, criterion = 0.1)
