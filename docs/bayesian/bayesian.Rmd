@@ -553,12 +553,20 @@ $$
 
 Where $f(y|\theta,x)$ represents the modelling random sampling error as in frequentist regression (the likelihood function), and $f(\theta|x)$ representing the error arising from $\theta$ being a random variable rather than being treated as a fixed quantity.
 
-Now why is it an integral? Let's think of the coin example above where there are only two types of coins in the economy. If we want to know what is the probability we get heads, rather than the probability that we have a fair or a biased coin. 
+Now why is it an integral? Let's think of the coin example above where there are only two types of coins in the economy. To predict the likelihood of getting heads next time, given our evidence, we do the following:
 
-$$
+$$\begin{aligned}
 P(\text{heads}|k=2)
-\\ = P(\text{heads}|\text{fair},k=2) \times P(\text{fair}|k=2) + P(\text{heads}|\text{biased},k=2) \times P(\text{biased}|k=2)
-$$
+\\ = P(\text{heads}|\text{fair},k=`r k`) \times P(\text{fair}|k=`r k`) + P(\text{heads}|\text{biased},k=`r k`) \times P(\text{biased}|k=`r k`)
+\\ = 0.5 \times P(\text{fair}|k=`r k`) + `r k/n` \times P(\text{biased}|k=`r k`)
+\\ = 0.5 \times \frac{P(k=`r k`|\text{fair}) \times P(\text{fair})}{P(k=`r k`)} + `r k/n` \times \frac{P(k=`r k`|\text{biased}) \times P(\text{biased})}{P(k=`r k`)}
+\\ = 0.5 \times `r round(fair_coin_prob, 4)` + `r k/n` \times `r round(biased_coin_prob,4)`
+\\ = `r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`
+\end{aligned}$$
+
+Note that we have subbed in our results for the probability that we have a fair or a biased coin using bayes theorem, to allow us to predict the probability we get heads next time.
+
+If we chose a purely frequentist approach, we would have guessed that the likelihood is $`r k/n`$, since we observed $`r k`$ heads. If we chose to purely use our prior informtion that 90% of coins were fair, we would have guessed $0.9 \times 0.5 + 0.1 \times `r k/n` = `r 0.9*0.5+0.1*k/n`$. However, since we have incorporated both the prior information and the new evidence, we predict a result that is somewhere in the middle, at $`r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`$. 
 
 As before, we summarise the probability mass function relating to $\theta$ as being 0.5 (fair) for 90% of coins in the economy, and $`r k/n` (biased) for 10% of these coins, which gives us the following:
 
