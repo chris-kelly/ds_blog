@@ -69,15 +69,13 @@ np_heads_actprob <- round(binomial_probability(n*p,n,p),4)*100
 
 ```
 
-But in the real world, it's not possible to take lots of samples over and over again - and we generally just take one. Taking a sample one time, we might observe `r k` heads. This is equivalent to creating a sample of size $`r n`$ and observing a mean probability of $`r sample_mean`$.
+But in the real world, it's not possible to take lots of samples over and over again - and we generally just take one. Taking a sample one time, we might observe $`r k`$ heads. This is equivalent to creating a sample of size $`r n`$ and observing a mean probability of $`r sample_mean`$.
 
-We don't know what the true probability of flipping heads is ($\theta$), but we can plot the likelihood of observing `r k` heads for every possible $\theta$ the coin might be. On the left graph below, for every possible value that the probability of flipping heads could be on the x axis (somewhere between 0 and 1), the likelihood of observing $`r k`$ heads is plotted on the y axis, giving the orange line. For example, the likelihood of observing $`r k`$ heads if the probablity of flipping heads is $`r k/n`$ is $`r k_heads_maxprob`\%`$. If the probablity of flipping heads is actually $`r p`$, then the likelihood of flipping `r k` heads in our sample is only $`r k_heads_actprob`\%$. 
+In frequentist statistics, we assume there is only one true probability for flipping heads ($\theta$). We thus want to find that probability that is most likely to give us the result we observed in our sample (a 'maximum likelihood estimate'). On the left graph below, for every possible value that the probability of flipping heads could be on the x axis (somewhere between 0 and 1), the likelihood of observing $`r k`$ heads is plotted on the y axis, giving the orange line. For example, the likelihood of observing $`r k`$ heads if the probablity of flipping heads is $`r k/n`$ is $`r k_heads_maxprob`\%$. If the probablity of flipping heads is actually $`r p`$, then the likelihood of flipping `r k` heads in our sample is only $`r k_heads_actprob`\%$. It appears then, based solely on our sample, that our true probability is most likely to be $`r sample_mean`$.
 
-It appears most probable from our sample then that our true probability is indeed `r sample_mean` - the most likely probability is what we observe as the mean in our sample (the maximum likelihood estimation is ` rsample_mean`). Thus, a frequentist would conclude that the most likely value of $\theta$ is $`r sample_mean`$, and that the true value of $\theta$ is hopefully near to it.
+We say estimate, however, because despite treating the true $\theta$ as a fixed (non-random) value, frequentists acknowledge there is random sampling error. Even if the probability of flipping heads remaining constant, sometimes there will be `r k` heads, sometimes there will be `r n` heads etc in our sample, simply due to chance. To clarify, frequentists believe the probability is fixed (at $\theta$), but the number of heads is a random variable conditioned by that fixed parameter: if $\theta$ is genuinely $`r sample_mean`$, then observing $`r k`$ heads is more likely than observing $10$ heads, but both results are possible. 
 
-However, despite treating the true $\theta$ as a fixed (non-random) value, frequentists acknowledge there is random sampling error. Even if the probability of flipping heads remaining constant, sometimes there will be `r k` heads, sometimes there will be `r n` heads etc simply due to chance. We can illustrate this by plotting the likelihood of observing different numbers of heads given a fixed value of $\theta$. In the graph on the right, the probability of getting different numbers of heads between 0 and `r n` is plotted in green if the value of theta is $`r k/n`$, and blue if the probability is $`r p`$.
-
-In this way then, despite believing the actual (population) probability $\theta$ to be fixed at one value (and from the sample, the most probable being $`r k/n`$), the graph on the right illustrates how frequentists believe that the number of heads observed is a random variable (conditioned by $\theta$). By random variable, this means that the number of heads could be many different values before sampling (0-`r n`) rather than being pre-determined/fixed as how they treat $\theta$. The likelihood of observing any of these possible values is conditioned by the fixed probability $\theta$ as per the distribution on the right (if the true value of $\theta$ is $`r p`$, then observing $`r p*n`$ heads in our sample is a lot more likely than observing $`r n`$, and observing $`r k`$ heads is very unlikely).
+We can illustrate how the number of heads observed follows a probability distribution conditioned by the fixed value of $\theta$ by plotting the likelihood of observing different numbers of heads. In the graph on the right, the probability of getting different numbers of heads between 0 and `r n` is plotted in green if the value of theta is $`r k/n`$. (A bayesian might also consider other values of theta, such as the blue one if the probability is $`r p`$, but will discuss that later).
 
 ``` {r, fig.width=10, fig.height=7}
 
@@ -95,7 +93,7 @@ subplot(
     layout(xaxis = list(title = 'θ'))
   , plot_ly(type = 'scatter', mode = 'lines+markers') %>%
     add_trace(x = seq(0,10,1), y = likelihood_est, name = paste0('p(H=k|θ=',k/n,')')) %>%
-    add_trace(x = seq(0,10,1), y = likelihood_act, name = paste0('p(H=k|θ=',p,')')) %>%
+    add_trace(x = seq(0,10,1), y = likelihood_act, name = paste0('p(H=k|θ=',p,')'), visible = 'legendonly') %>%
     layout(xaxis = list(title = '# heads'))
   , shareY = T
   , nrows = 1)
@@ -109,7 +107,7 @@ subplot(
 #          , yaxis = list(title = 'likelihood'))
 ```
 
-Hence, to acknowledge that there is randomness associated with this sample mean, frequentists construct confidence intervals. Again to follow the frequentist interpretation, a 95% confidence interval means that, if the sampling proceedure was repeated many, many times, that 95% of the time the true value of $\theta$ would fall within the confidence interval.
+Thus, to acknowledge that there is randomness associated with this sample mean, frequentists construct confidence intervals. Again to follow the frequentist interpretation, a 95% confidence interval means that, if the sampling proceedure was repeated many, many times, that 95% of the time the true value of $\theta$ would fall within the confidence interval.
 *(Nuanced note - this is not the same as saying that, in one sample, there is a 95% chance that the true value of $\theta$ lies within it. This is because $\theta$ is a fixed value, not a random variable, so it either falls within the sample confidence interval or not.)*
 
 ``` {r, fig.width=10, fig.height=7}
@@ -393,66 +391,50 @@ $$
 $$
 
 But finding this can be tricky, particularly with computing closed intervals. The code below shows a brute force solution. The way to think about this is as follows:
-* Credible intervals: Given the mean of the distribution, expand the range outwards equally until 95% of the area under the curve is captured.
-* Highest posterior density: Imagine a horizontal line moving slowly towards the x axis, intercepting the distribution twice. Once the 
 
-(NOTE THE GRAPH BELOW IS WRONG, NEEDS FIXING)
+* Credible intervals: Given the mean of the distribution, expand the range outwards equally until 50% of the area under the curve is captured.
+* Highest posterior density: Imagine a horizontal line moving slowly towards the x axis, intercepting the distribution twice. The line stops descending once it is low enough that the auc is 50%.
 
 ```{r, fig.width=10, fig.height=7, fig.fullwidth = TRUE}
-find_binomial_credible_interval <- function(k, n, p, learning_rate = 0.5, initial_width = 0.1, criterion = 0.1, max_iterations = 1000, precision = 4) {
+
+find_beta_credible_interval <- function(s1,s2,learning_rate = 0.05, initial_width = 0.1, criterion = 0.05, max_iterations = 1000, precision = 0.001) {
+  mean_p <- sum(sapply(seq(0,1,1/max_iterations), FUN = function(x) {dbeta(x,s1,s2)})*seq(0,1,1/max_iterations))/
+             sum(sapply(seq(0,1,1/max_iterations), FUN = function(x) {dbeta(x,s1,s2)}))
   bit <- initial_width/2 # amount to push away from mean
   for(i in 1:max_iterations) {
-    amount <- pbeta(p+bit, k+1, n-k+1) - pbeta(p-bit, k+1, n-k+1) # sum the auc between p-bit and p+bit
-    bit <- bit - learning_rate*(amount - (1-criterion)) # decrease if auc > 0.95 or increase if auc < 0.85 
-    if(abs(amount - (1-criterion)) < 1/(10^precision)) {
-      break()
-    }
-  }
-  return(c(p-bit,p+bit))
-}
-
-find_binomial_highest_start_point <- function(precision = 4,k,n) {
-  x <- seq(0,1,10^-precision)
-  pdf <- dbeta(x,k,n-k)
-  return(x[max(pdf) == pdf])
-}
-
-find_binomial_hpd <- function(k,n,criterion=0.1, initial_movement_size = 0.1, max_iterations=10^3,learning_rate =  0.005, precision = 4) {
-  p <- find_binomial_highest_start_point(precision,k,n)
-  left_loc <- p
-  right_loc <- p
-  bit <- initial_movement_size
-  residual <- 1 - criterion
-  
-  for(i in 1:max_iterations) {
-    
-    if(abs(residual) < 10^-precision) {
+    amount <- pbeta(mean_p+bit,s1,s2) - pbeta(mean_p-bit,s1,s2) # sum the auc between p-bit and p+bit
+    if(abs(amount - (1-criterion)) < precision) {
       break()
     } else {
-      if(residual > 0) { # need to increase width
-        if(dbeta(left_loc - bit, k+1, n-k+1) > dbeta(right_loc + bit, k+1, n-k+1)) { # left side pdf is higher
-          left_loc <- left_loc-bit # move left
-        } else { # right side pdf is higher
-          right_loc <- right_loc+bit # move right
-        }
-      } else {
-        # stop()
-        if(dbeta(left_loc - bit, k+1, n-k+1) > dbeta(right_loc + bit, k+1, n-k+1)) { # left side pdf is higher
-          right_loc <- right_loc-bit # move right
-        } else { # right side pdf is higher
-          left_loc <- left_loc+bit # move left
-        }
-      }
-      residual <- (1-criterion) - (pbeta(right_loc, k+1, n-k+1)-pbeta(left_loc, k+1, n-k+1))
-      bit <- bit - abs(learning_rate*residual)
+      bit <- bit - learning_rate*(amount - (1-criterion)) # decrease if auc meets criteria 
     }
   }
-  return(c(left_loc, right_loc))
+  return(c(mean_p-bit,mean_p+bit))
 }
 
+cumsum_pbeta = function(v,s1,s2) {
+  sapply(v,FUN = function(x) pbeta(x,s1,s2)-pbeta(v[1],s1,s2))
+}
 
-credible_intervals <- find_binomial_credible_interval(k, n, p, max_iterations = 10^3, criterion = 0.1)
-highest_posterior_density <- find_binomial_hpd(k,n, max_iterations = 10^3, criterion = 0.1)
+find_beta_hpd <- function(s1,s2,conf_range=0.95,precision = 0.001) {
+  results <- 
+    sapply(seq(1,1+1/precision,1), FUN = function(i) {
+      this_bit <- seq(seq(0,1,precision)[i],1,precision) # for all range between v[i] and 1
+      if(max(cumsum_pbeta(this_bit,s1,s2)) > conf_range) { # disregard if not big enough for conf interval
+        this_bit[cumsum_pbeta(this_bit,s1,s2) <= conf_range] # store smallest range that is just below conf_range
+      } else {
+        seq(0,1,precision) # arbritarily too long vector
+      }
+    })
+  index_choices <- results[min(unlist(lapply(results, FUN = length))) 
+                           == unlist(lapply(results, FUN = length))] # only keep the smallest vectors 
+  # if low precision, many choices
+  indexes <- index_choices[which.min(sapply(index_choices, FUN = function(x) {abs(dbeta(max(x),k+1,n-k+1)-dbeta(min(x),k+1,n-k+1))}))][[1]] # choose the one with the most equal heigh boundaries
+  return(indexes)
+}
+
+credible_intervals <- find_beta_credible_interval(k+1, n-k+1, max_iterations = 10^3, criterion = 0.05)
+highest_posterior_density <- find_beta_hpd(k+1,n-k+1,conf_range = 0.95)
 
 plot_ly(type = 'scatter', mode = 'lines') %>%
   add_trace(x = x, y = likelihood_f, name = 'Binom(10,0.2)') %>%
@@ -463,14 +445,19 @@ plot_ly(type = 'scatter', mode = 'lines') %>%
   layout(title = 'Credible Interval (equidistant around mean)')
 
 plot_ly(type = 'scatter', mode = 'lines') %>%
-  add_trace(x = x, y = likelihood_f, name = 'Binom(10,0.2)') %>%
+  add_trace(x = seq(0,1,0.001), y = sapply(seq(0,1,0.001), FUN = function(x) {dbeta(x,k+1,n-k+1)}), name = 'Binom(10,0.2)') %>%
   add_trace(x = rep(p,2), y = c(0,max(likelihood_f)), name = 'Mean') %>%
   # add_trace(x = rep(credible_intervals[1],2), y = c(0,max(likelihood_f)), name = 'Lower credible interval bound') %>%
   # add_trace(x = rep(credible_intervals[2],2), y = c(0,max(likelihood_f)), name = 'Upper credible interval bound') %>%
-  add_trace(x = pmin(pmax(x, highest_posterior_density[1]),highest_posterior_density[2]), y = likelihood_f, name = 'Highest Posterior Density', fill = 'tozeroy', line = list(dash = 'dot')) %>%
+  add_trace(x = highest_posterior_density, y = sapply(highest_posterior_density, FUN = function(x) {dbeta(x,k+1,n-k+1)}), name = 'Highest Posterior Density', fill = 'tozeroy', line = list(dash = 'dot')) %>%
   layout(title = 'Highest Posterior Density (smallest spread that contains 95% of data)')
+
+# pbeta(max(highest_posterior_density),k+1,n-k+1) - pbeta(min(highest_posterior_density),k+1,n-k+1)
+# pbeta(max(credible_intervals),k+1,n-k+1) - pbeta(min(credible_intervals),k+1,n-k+1)
   
 ```
+
+The width of the credible interval is larger, ranging from `r min(credible_intervals)` to `r max(credible_intervals)` (range of `r max(credible_intervals) - min(credible_intervals)`), whereas width the range of the HPD is smaller, ranging from `r min(highest_posterior_density)` to `r max(highest_posterior_density)` (range of `r max(highest_posterior_density) - min(highest_posterior_density)`)
 
 Some Bayesians argue though that credible intervals and HPDs are only really something that are useful to compare to frequentist interpretations, as the distribution is already given by the posterior.
 
