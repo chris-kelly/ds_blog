@@ -241,6 +241,36 @@ In other words, our prior belief (before sampling and observing any data) was th
 
 It is this incorporation of prior data that is either seen as Bayesian's biggest advantage or pitfall. On the one hand, experiments are not abstract devices, and some knowledge about the process being investigated before obtaining the data is known and arguably should be incorporated. On the other, incorporating subjective opinions, particularly strong ones, may mean that you do not learn the true values you are trying to derive. Bayesian is thus analysis that uses a set of observations to change opinion rather than as a means to determine ultimate truth.
 
+## Thinking about Bayesian in terms of predicting things
+
+There are two sources of uncertainty when building statistical models to predict things:
+
+* Uncertainty due to the fact any future value is itself a random event, $P(y|\theta)$ (because future events are essentially samples that have error conditioned by $\theta$)
+* Uncertainty in the parameter values which have been estimated on the basis of past data, $P(\theta|X)$ (for example, a coefficient estimated in a regression model)
+
+Classical models deal with point 1, making a point estimate in the future based on the 'best' parameters estimated from past data. This is equivalent to forming a likelihood (i.e. incorporating new data).
+What they don't do though is think about point 2, that the seemingly optimum model estimated itself might be incorrect since the true values of $\theta$ are not fixed, and this is equivalent to not building in any prior beliefs. In a way, by giving a point estimate, the models generate a false sense of precision, and the confidence intervals arounds any estimate is only predicated on the idea there is sampling randomness, rather than randomness associated with $\theta$ itself.
+
+In other words, classical models seek to best fit the new evidence (traditionally through maximum likelihood estimation for generalized linear models), whereas bayesian models incorporate prior beliefs as well.
+
+To predict the likelihood of getting heads next time, given our evidence, we do the following:
+
+$$
+\begin{aligned}
+P(\text{heads}|k=2)
+\\ = P(\text{heads}|\text{fair},k=`r k`) \times P(\text{fair}|k=`r k`) + P(\text{heads}|\text{biased},k=`r k`) \times P(\text{biased}|k=`r k`)
+\\ = 0.5 \times P(\text{fair}|k=`r k`) + `r k/n` \times P(\text{biased}|k=`r k`)
+\\ = 0.5 \times \frac{P(k=`r k`|\text{fair}) \times P(\text{fair})}{P(k=`r k`)} + `r k/n` \times \frac{P(k=`r k`|\text{biased}) \times P(\text{biased})}{P(k=`r k`)}
+\\ = 0.5 \times `r round(fair_coin_prob, 4)` + `r k/n` \times `r round(biased_coin_prob,4)`
+\\ = `r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`
+\end{aligned}
+$$
+
+Note that we have subbed in our results for the probability that we have a fair or a biased coin using bayes theorem, to allow us to predict the probability we get heads next time.
+
+If we chose a purely frequentist approach, we would have guessed that the likelihood is $`r k/n`$, since we observed $`r k`$ heads, and \theta can only take one value (and this was the maximum likelihood estimate). If we chose to only use our prior informtion that 90% of coins were fair, we would have guessed $0.9 \times 0.5 + 0.1 \times `r k/n` = `r 0.9*0.5+0.1*k/n`$. However, since we have incorporated both the prior information and the new evidence, we predict a result that is somewhere in the middle, at $`r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`$. 
+
+
 To help describe bayesian analysis, the following terms are often used:
 
 * Prior distribution: $Pr(\theta)$ - represents existing belief about $\theta$ (*Represents what was thought before seeing the data*). For example, in the binomial coin example above, we have prior knowledge that 90% of coins in our economy are fair, so $P(\theta)=P(Biased)=0.1$
@@ -555,18 +585,20 @@ Where $f(y|\theta,x)$ represents the modelling random sampling error as in frequ
 
 Now why is it an integral? Let's think of the coin example above where there are only two types of coins in the economy. To predict the likelihood of getting heads next time, given our evidence, we do the following:
 
-$$\begin{aligned}
+$$
+\begin{aligned}
 P(\text{heads}|k=2)
 \\ = P(\text{heads}|\text{fair},k=`r k`) \times P(\text{fair}|k=`r k`) + P(\text{heads}|\text{biased},k=`r k`) \times P(\text{biased}|k=`r k`)
 \\ = 0.5 \times P(\text{fair}|k=`r k`) + `r k/n` \times P(\text{biased}|k=`r k`)
 \\ = 0.5 \times \frac{P(k=`r k`|\text{fair}) \times P(\text{fair})}{P(k=`r k`)} + `r k/n` \times \frac{P(k=`r k`|\text{biased}) \times P(\text{biased})}{P(k=`r k`)}
 \\ = 0.5 \times `r round(fair_coin_prob, 4)` + `r k/n` \times `r round(biased_coin_prob,4)`
 \\ = `r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`
-\end{aligned}$$
+\end{aligned}
+$$
 
 Note that we have subbed in our results for the probability that we have a fair or a biased coin using bayes theorem, to allow us to predict the probability we get heads next time.
 
-If we chose a purely frequentist approach, we would have guessed that the likelihood is $`r k/n`$, since we observed $`r k`$ heads. If we chose to purely use our prior informtion that 90% of coins were fair, we would have guessed $0.9 \times 0.5 + 0.1 \times `r k/n` = `r 0.9*0.5+0.1*k/n`$. However, since we have incorporated both the prior information and the new evidence, we predict a result that is somewhere in the middle, at $`r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`$. 
+If we chose a purely frequentist approach, we would have guessed that the likelihood is $`r k/n`$, since we observed $`r k`$ heads, and \theta can only take one value. If we chose to only use our prior informtion that 90% of coins were fair, we would have guessed $0.9 \times 0.5 + 0.1 \times `r k/n` = `r 0.9*0.5+0.1*k/n`$. However, since we have incorporated both the prior information and the new evidence, we predict a result that is somewhere in the middle, at $`r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`$. 
 
 As before, we summarise the probability mass function relating to $\theta$ as being 0.5 (fair) for 90% of coins in the economy, and $`r k/n` (biased) for 10% of these coins, which gives us the following:
 
@@ -575,7 +607,7 @@ P(\text{heads|k=`r k`}) \\
 = \sum_{\theta}{P(\text{heads}|\theta\text{,k=`r k`}) \times P(\theta|\text{k=`r k`}) }
 $$
 
-And by taking into account all the possible values that theta can take, we are essentially integrating along the 
+And by taking into account all the possible values that theta can take, we are essentially integrating by theta. 
 
 $$
 P(\text{heads|k=`r k`}) = \int P(\text{heads}|\theta,k=`r k`) \text{ }P(\theta|k=`r k`) \text{ } \partial(\theta)
