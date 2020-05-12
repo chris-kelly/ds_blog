@@ -118,6 +118,8 @@ $$
 
 As such, we see that minimizing the cost function will artificially reduce the coefficents depending on the size of $\lambda$. This is an example of L2 regularization (ridge). Selecting a good value for $\lambda$ can be found through cross-validation.
 
+DRAW A GRAPH SHOWING FITS WITH VARIOUS LAMBDA PARAMETERS.
+
 However, L2 regularization will never zero-out a coefficient. Instead, we can similarly derive the same penalty through L1 regularisation (LASSO) which actively zeroes out coefficients:
 
 $$
@@ -210,7 +212,7 @@ Spike and slab priors put a lot of probability mass at zero (the 'spike') and ro
 * The spike is often derived from a bernoulli....
 * The slab is often derived as a normal with a standard deviation following a tau distribution....
 
-Most spike-and-slab variable selection approaches use the mixture normal priors on coefficients and employ Markov Chain Monte Carlo (MCMC) algorithms (e.g., stochastic search variable selection) to fit the model. 
+Most spike-and-slab variable selection approaches use the mixture normal priors on coefficients and employ Markov Chain Monte Carlo (MCMC) algorithms (e.g., stochastic search variable selection) to fit the model (this is because the prior does not have a good conjugate likelhood)
 
 These MCMC methods are computationally intensive for analyzing large-scale data, and the mixture normal priors cannot shrink coefficients exactly to zero, and thus cannot automatically perform variable selection.
 
