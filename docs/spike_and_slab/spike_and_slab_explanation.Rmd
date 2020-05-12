@@ -1,0 +1,270 @@
+---
+title: "Spike and Slab"
+output:
+  html_document:
+    df_print: paged
+---
+
+* OLS doesn't model uncertainty in the coefficients, so a bayesian approach might better capture the inherent error in the model
+* We can use priors in the bayesian paradigm to achieve the same results as L1 and L2 regularization in the frequentist paradigm
+* Since L2 is normal, it doesn't zero-out coefficients, so it's not really a variable selection method, just a regularization method
+* Since L1 is laplace, it might drop features that have small but significant impact
+* Hence we can use a 'spike-and-slab' prior (a combination of both discrete and continuous density) to achieve variable selection
+
+* https://www.genetics.org/content/205/1/77
+* http://people.ischool.berkeley.edu/~hal/Papers/2012/fat.pdf
+* http://www.batisengul.co.uk/post/bayes-of-our-lives-a-gentle-introduction-to-bayesian-statistics/
+* http://www.batisengul.co.uk/post/spike-and-slab-bayesian-linear-regression-with-variable-selection/
+* https://repository.upenn.edu/cgi/viewcontent.cgi?article=1629&context=statistics_papers (1.3)
+* http://eeyore.wu-wien.ac.at/research/talks/resources/slidesscott.pdf
+
+SHOW THAT OLS OPTIMIZES BETA AT cov(X,y)/var(X)
+
+* Show that alpha/beta is optimized at cov(X,y)/var(X) etc. through 3d Plot
+
+# Quick recap of OLS
+
+There are many options to choose for the intercept (alpha) and the slope (beta) to best a line that best fits the data, but we want to find the ones that best fit the data:
+
+```{r, message=F, warning=F}
+require(plotly)
+set.seed(1)
+X = 0:5
+y = 5 + 2*X + runif(6,-0.5,1)
+plot_ly(type='scatter',mode='lines') %>%
+  add_trace(x=X,y=y,mode='markers',name='Observed data') %>%
+  add_trace(x=X,y=1+1*X,name='alpha=1,beta=0.5') %>%
+  add_trace(x=X,y=5+1*X,name='alpha=5,beta=0.5') %>%
+  add_trace(x=X,y=9+1*X,name='alpha=9,beta=0.5') %>%
+  add_trace(x=X,y=1+2*X,name='alpha=1,beta=2') %>%
+  add_trace(x=X,y=5+2*X,name='alpha=5,beta=2') %>%
+  add_trace(x=X,y=9+2*X,name='alpha=9,beta=2') %>%
+  add_trace(x=X,y=1+4*X,name='alpha=1,beta=4') %>%
+  add_trace(x=X,y=5+4*X,name='alpha=5,beta=4') %>%
+  add_trace(x=X,y=9+4*X,name='alpha=9,beta=4') %>%
+  layout(xaxis=list(title='X'), yaxis=list(title='y'))
+```
+
+We can see that the choices of alpha and beta that minimize the sum of squared residuals are 5 and 2 respectively:
+
+```{r}
+
+alpha_options <- seq(3,7,1) # seq(4,6,1) # 
+beta_options <- 2^seq(0,2,0.5) # 2^seq(0.5,1.5,0.5) # 
+
+graph_options <- "plot_ly(type='scatter',mode='lines') %>% add_trace(x=X,y=y,mode='markers',name='Observed data') %>% "
+cost_matrix <- matrix(nrow=length(alpha_options),ncol=length(beta_options),dimnames = list(alpha_options, beta_options))
+
+for(alpha in 1:length(alpha_options)) {
+  for(beta in 1:length(beta_options)) {
+    graph_options <- paste0(graph_options, paste0(" add_trace(x=X,y=",alpha_options[alpha],"+",beta_options[beta],"*X",",name='alpha=",alpha_options[alpha],",beta=",round(beta_options[beta],1),"') %>%  \n"))
+    cost_matrix[alpha,beta] <- sum((y-alpha_options[alpha]-beta_options[beta]*X)^2)
+  }
+}
+graph_options <- paste0(graph_options, ' layout()')
+# eval(parse(text=graph_options))
+
+plot_ly(x=beta_options,y=alpha_options,z =~cost_matrix,showscale=FALSE,reversescale=TRUE) %>% 
+  layout(scene=list(xaxis=list(title='alpha'),yaxis=list(title='beta'),zaxis=list(title='Sum squared residuals'))) %>% 
+  add_surface(contours = list(z = list(project=list(z=TRUE))))
+```
+
+However, we don't need to do this through an exhaustive gridsearch through all the parameters to minimize the sum of squared residuals, but can yield this by differentiating our regression function with respect to our parameters to find its minimum point.
+
+This is simple to see if our features are orthogonal (i.e. in a univariate regression, the intercept is a one-dimensional vector of 1s, and the X a one-dimensional vector) as we can apply partial differentiation by $\beta_j$:
+
+$$
+\min_\beta{\left[\sum_{i=1}^N{\epsilon_i^2}\right]}
+\Rightarrow \frac{\partial}{\partial\beta_j} \sum_{i=1}^N{\epsilon_i^2}=\frac{\partial}{\partial\epsilon} \sum_{i=1}^N{\epsilon_i^2} \frac{\partial\epsilon}{\partial\beta_j} = \sum_{i=1}^N 2\epsilon_i\left(\frac{\partial\epsilon_i}{\partial\beta_j}\right)=0 \\
+\epsilon_i = y_i-\beta_0-\beta_1x_i \Rightarrow \\
+\sum_{i=1}^N2( y_i-\beta_0-\beta_1x_i)\left(\frac{\partial( y_i-\beta_0-\beta_1x_i)}{\partial\beta_j}\right)=0 \\
+\text{if j=0:} \\ 
+\Rightarrow \sum_{i=1}^N2( y_i-\beta_0-\beta_1x_i)(-1)=0 \\
+\Rightarrow n\beta_0 = \sum_{i=1}^N( y_i-\beta_1x_i)=\sum_{i=1}^N{y_i} - \beta_1\sum_{i=1}^N{x_i} \\
+\Rightarrow \beta_0 = \frac{\sum_{i=1}^N{y_i}}{n} - \beta_1\frac{\sum_{i=1}^N{x_i}}{n}=\bar{y}-\beta_1\bar{x} \\
+\text{if j=1:} \\ 
+\Rightarrow \sum_{i=1}^N2( y_i-\beta_0-\beta_1x_i)(-x_i)=0 \\
+\Rightarrow \sum_{i=1}^N2( y_i-(\bar{y}-\beta_1\bar{x})-\beta_1x_i)(-x_i)=0 \\
+\Rightarrow \sum_{i=1}^N( y_i-\bar{y}-\beta_1(x_i-\bar{x}))(-x_i)
+=\sum_{i=1}^N( y_ix_i-\bar{y}x_i-\beta_1x_i^2+\beta_1\bar{x}x_i)
+=\sum_{i=1}^N{y_ix_i}-\bar{y}\sum_{i=1}^N{x_i}-\beta_1\sum_{i=1}^N{x_i}^2+\beta_1\bar{x}\sum_{i=1}^N{x_i})
+=\sum_{i=1}^N{y_ix_i}-\bar{y}(N\bar{x})-\beta_1\sum_{i=1}^N{x_i}^2+\beta_1\bar{x}(N\bar{x})=0 \\
+\Rightarrow \beta_1 = \frac{\sum_{i=1}^N{y_ix_i}-N\bar{x}\bar{y}}{\sum_{i=1}^N{x_i^2}-N\bar{x}^2}
+= \frac{\sum_{i=1}^N{y_ix_i}-N\bar{x}\bar{y}+(N\bar{x}\bar{y}-N\bar{x}\bar{y})}{\sum_{i=1}^N{x_i^2}-N\bar{x}^2+(N\bar{x}^2-N\bar{x}^2)}
+= \frac{\sum_{i=1}^N{y_ix_i}-\sum_{i=1}^N\bar{x}\bar{y}+(\bar{x}\sum_{i=1}^N{y_i}-\bar{y}\sum_{i=1}^N{x_i})}{\sum_{i=1}^N{x_i^2}-N\bar{x}^2+(\bar{x}\sum_{i=1}^N{x_i}-\bar{x}\sum_{i=1}^N{x_i})}
+= \frac{\sum_{i=1}^N{(y_i-\bar{y})(x_i-\bar{x})}}{\sum_{i=1}^N{(x_i-\bar{x})^2}}= \frac{cov(x,y)}{var(x)}
+$$
+
+(If the regression is multivariate, and the features are not perfectly orthogonal - i.e. is some multicollinearity - then this doesn't perfectly hold, and can yield different coefficients)
+
+We can see then that the best unbiased linear estimator (BLUE) for the intercept and slope is derived from minimizing the sum of squared residuals. These derivations also derive two interesting properties:
+
+* From line 5, that the mean error is zero: $\sum_{i=1}^N2( y_i-\beta_0-\beta_1x_i)(-1)=0 \Rightarrow \frac{1}{n}\sum_{i=1}^N(\epsilon_i)=0$
+* From line 9, that X is deterministic, and not correlated with the error term: $\sum_{i=1}^N2( y_i-\beta_0-\beta_1x_i)(-x_i)=0 \Rightarrow \sum_{i=1}^N(\epsilon_ix_i)=0$ (note that this is equal to the $cov(x_i,e_i)=\sum_{i=1}^N(\epsilon_ix_i)-\sum_{i=1}^N(\bar{\epsilon}\bar{x})$ since the mean error $\bar{\epsilon}$ is zero)
+
+# Regularization
+
+However, if we want to reduce the features available in our model, we might want to use regularization: applying a penalty term in our cost function in order to change the optimized coefficient. For example, we could change our cost function in the following way:
+
+$$
+\min_\beta{\left[\sum_{i=1}^N{\epsilon_i^2}-\frac{\lambda}{2}\sum_{k=1}^K{\beta_k^2}\right]}
+$$
+Which places a penalty term $\lambda$ on large coefficients, to prevent overfitting. This changes the optimized slope coefficients, by changing the reduction in line 9 above:
+
+$$
+\min_{\beta_j}{\left[\sum_{i=1}^N{\epsilon_i^2}-\frac{\lambda}{2}\sum_{k=1}^K{\beta_k^2}\right]}
+\Rightarrow \sum_{i=1}^N 2\epsilon_i\left(\frac{\partial\epsilon_i}{\partial\beta_j}\right)-\lambda\beta_j=0 \\
+$$
+
+As such, we see that minimizing the cost function will artificially reduce the coefficents depending on the size of $\lambda$. This is an example of L2 regularization (ridge). Selecting a good value for $\lambda$ can be found through cross-validation.
+
+However, L2 regularization will never zero-out a coefficient. Instead, we can similarly derive the same penalty through L1 regularisation (LASSO) which actively zeroes out coefficients:
+
+$$
+\min_\beta{\left[\sum_{i=1}^N{\epsilon_i^2}-\frac{\lambda}{2}\sum_{k=1}^K{\mid\beta_k\mid}\right]}
+$$
+
+Empirically though, LASSO is shown to be unreliable, zero-es out coefficients that are small but significant.
+
+A more robust method is the elastic net, which combines L1 and L2 regularization. It is often implemented in the following way:
+
+$$
+\min_\beta{\left[\sum_{i=1}^N{\epsilon_i^2}-\frac{\lambda}{2}\left(\alpha\sum_{k=1}^K{\mid\beta_k\mid}+(1-\alpha)\sum_{k=1}^K{\beta_k^2}\right)\right]}
+$$
+
+
+However, regularization in a frequentist model can be a blunt instrument when thinking about regularization of coefficients. This is because $\lambda$ is a single penalty for all coefficients, so if poorly specified, can either include a very large number of irrelevant predictors, or over-shink included coefficients. In particular, it might drop small but signficant features.
+An ideal method should thus only induce weak shrinkage on large coefficients, and stronger shrinkage to zero on less relevant effects.
+Cue bayesian regression:
+
+# Maximising likelihood to solve linear regression:
+
+First let's solve the original linear regression problem by maximum likelihood as per the bayesian paradigm. Rather than simply minimizing the residual sum of squares (as usual with the OLS loss function), we want to find the beta that maximises the likelihood of observing the evidence we have, knowing $y \sim N(X'\beta,1)$.
+In other words, the probability of observing $y$ given our data and estimated model parameters is a function of the normal probability density of our squared residuals:
+
+$$
+p(y|\beta,X) = \prod_{i=1}^{n}{\frac{1}{\sqrt{2\pi}}}e^{-\frac{1}{2}\epsilon_i^2}
+$$
+We can take the negative log of the likelihood function to make it easier to differentiate:
+
+$$
+\max_\beta{p(y|\beta,X)} \Rightarrow \min_\beta\left[{-\log{\left(\prod_{i=1}^{n}{\frac{1}{\sqrt{2\pi}}}e^{-\frac{1}{2}\epsilon_i^2}\right)}}\right] = \\
+\min_\beta{\left[ -\sum{\log{\left(\frac{1}{\sqrt{2\pi}}e^{-\frac{1}{2}\epsilon_i^2}\right)}} \right]} \\
+= \min_\beta{\left[ -\sum{\log{\left(\frac{1}{\sqrt{2\pi}}\right)}} + -\sum{\log{\left(e^{-\frac{1}{2}\epsilon_i^2}\right)}} \right]} \\
+= \min_\beta{\left[ -\sum{\log{((2\pi)^{-\frac{1}{2}})}} + -\sum{\left(-\frac{1}{2}\epsilon_i^2\right)} \right]} \\
+= \min_\beta{\left[ \frac{1}{2}\sum{\log{(2\pi)}} + -\sum{\left(-\frac{1}{2}(y_i-X_i'\beta)^2\right)} \right]} \\
+= \min_\beta{\left[ \frac{1}{2}\sum{\log{(2\pi)}} + \frac{1}{2}(Y-X\beta)^T(Y-X\beta) \right]} \\
+= \min_\beta{\left[ \frac{1}{2}\sum{\log{(2\pi)}} + \frac{1}{2}\epsilon^T\epsilon \right]} \\
+\leftrightarrow \beta^*=\arg\min_\beta{\left[ \frac{1}{2}\epsilon^T\epsilon \right]}
+$$
+Now when we minimise the log-likelihood cost function by differentiating it with respect to $\beta$ and setting it to zero in order to derive the optimum coefficient, the constant $\log{(2\pi)}$ drops out, and we are left with differentiating $\frac{d}{d\beta}\epsilon^T\epsilon=0$ - the exact equivalent as with frequentist OLS.
+
+We can rewrite this in terms of the bayesian paradigm if we think of $\beta$ as a random variable (rather than a fixed quantity as per frequenist thinking):
+
+$$
+p(\beta|X,Y)=\frac{p(Y|\beta,X)p(\beta|X)}{p(Y|X)}=\frac{p(Y|\beta,X)p(\beta|X)}{\int p(Y|X,\beta)p(\beta|X)d\beta}
+$$
+Where:
+
+* $p(Y|\beta,X)$ is the likelihood function (where we maximise the log-likelihood as above)
+* $p(Y|X)$ is the evidence (the data we feed into the model)
+* $p(\beta|X)$ is the prior
+
+If we assume $\beta$ is fixed, then $p(\beta|X)=1$, and thus we get $= \min_\beta{\left[\epsilon^T\epsilon \right]} \Rightarrow \beta^*=(X^TX)^{-1}X^TY$ (as per OLS).
+
+# Using informative priors to apply regularization:
+
+However, we might want to pick a more informative prior for two reasons (1) including past evidence from previous models, that we want to update over time with new evidence or (2) we want to eliminate some of our predictors to create a more parsimonious model in a systematic way.
+
+For (2), picking a prior that is concentrated at zero can help achieve this - for example, using a laplace distribution:
+
+$$
+p(\beta|X) = p(\beta) = \prod_{k=1}^{K}{\frac{1}{2\gamma}e^{-\mid\beta\mid/{\gamma}}}
+$$
+
+PLOT OF LAPLACE
+
+$$
+\max_\beta{p(\beta|y,X)} = \max_\beta{p(y|beta,X)p(\beta|X)} \Rightarrow \\
+= \min_\beta{\left[-\log{(p(y|\beta,X)p(\beta|X))}\right]} = \min_\beta\left[{-\log{(p(y|\beta,X))} -\log{(p(\beta|X))}}\right] \\
+= \min_\beta{\left[ \frac{1}{2}\sum{\log{(2\pi)}} + \frac{1}{2}\epsilon^T\epsilon -\log{\left(\prod_{k=1}^{K}{\frac{1}{2\gamma}e^{-\mid\beta\mid/{\gamma}}}\right)} \right]} \\
+= \min_\beta{\left[ \frac{1}{2}\sum{\log{(2\pi)}} + \frac{1}{2}\epsilon^T\epsilon -\sum_{k=1}^{K}{\log{\left(\frac{1}{2\gamma}e^{-\mid\beta\mid/{\gamma}}\right)}} \right]} \\
+= \min_\beta{\left[ \frac{1}{2}\sum{\log{(2\pi)}} + \frac{1}{2}\epsilon^T\epsilon -\sum_{k=1}^{K}{\log{\left(\frac{1}{2\gamma}\right)}} -\sum_{k=1}^{K}{\log{\left(e^{-\mid\beta\mid/{\gamma}}\right)}} \right]} \\
+= \min_\beta{\left[ \frac{1}{2}\sum{\log{(2\pi)}} + \frac{1}{2}\epsilon^T\epsilon -\sum_{k=1}^{K}{\log{\left(\frac{1}{2\gamma}\right)}} +\frac{1}{\gamma}\sum_{k=1}^{K}{\mid\beta\mid} \right]} \\
+\leftrightarrow \beta^*=\arg\min_\beta{\left[ \frac{1}{2}\epsilon^T\epsilon +\frac{1}{\gamma}\sum_{k=1}^{K}{\mid\beta\mid} \right]}
+$$
+
+When we minimize with respect to beta, the constants drop out, so we are left with minimizing $\min_\beta{\left[\epsilon^T\epsilon + (2/\gamma)\sum_{k=1}^{K}{\mid\beta\mid} \right]} \\$, which is equivalent to L1 Lasso regresion (where $2/\gamma$ is the regularization parameter).
+(Note that if we set the prior instead to the normal centered at zero, then we derive L2 ridge regression).
+
+However, the 'lasso prior' is not truly sparse when the likelihood function yields a non-zero coefficent. Although there is sparsity in the mode of the prior, when combining this with the likelihood distribution, the sparsity does not continue into the posterior distribution.
+
+SHOW GRAPH OF THIS
+
+Consequently, we can combine a discrete and a continuous prior to construct a 'spike-and-slab' prior which fully zero-es out small coefficients:
+
+# Spike-and-slab
+
+Spike and slab priors put a lot of probability mass at zero (the 'spike') and roughly uniform low probability mass elsewhere (the 'slab').
+
+* The spike is often derived from a bernoulli....
+* The slab is often derived as a normal with a standard deviation following a tau distribution....
+
+Most spike-and-slab variable selection approaches use the mixture normal priors on coefficients and employ Markov Chain Monte Carlo (MCMC) algorithms (e.g., stochastic search variable selection) to fit the model. 
+
+These MCMC methods are computationally intensive for analyzing large-scale data, and the mixture normal priors cannot shrink coefficients exactly to zero, and thus cannot automatically perform variable selection.
+
+(since L1 is laplace, it might drop features that have small but significant impact, and if the number of potential features is very large)
+
+$$
+\pi(\beta|\gamma)=\prod_{i=1}^N\left[\gamma_i\psi_1(\beta)+(1-\gamma_i)\psi_0(\beta)\right]
+$$
+Where:
+
+* $\psi_0(\beta)$ serves as the 'spike' dstribution for modelling irrelevant (zero) coefficients
+* $\psi_1(\beta)$ serves as the 'slab' dstribution for modelling relevant (large) effects
+* $\gamma$ is an intermediate vector of binary variables ($\gamma_i \in \{0,1\}$) indexing all the possible models
+
+Let define $\gamma$ be a vector, the same length of the number of candidate exogenous regressors included in the model, which indicates the probability of inclusion of the variable in the model:
+<!-- \gamma \sim \prod_{k=1}^{K}{\pi_k^{\gamma_k}(1-\pi_k)^{1-\gamma_k}} -->
+$$
+\pi(\gamma|\theta) \sim \prod_{k=1}^{K}{\theta_k^{\gamma_k}(1-\theta_k)^{1-\gamma_k}}
+$$
+Without informative prior information, we tend to just set $\theta$ to a constant $\theta=\left(\frac{k}{K}\right)$, which yields:
+<!-- \gamma \sim  \prod_{k=1}^{K}{\left(\frac{k}{K}\right)^{\gamma_k} \left( 1-\frac{k}{K} \right)^{1-\gamma_k}} -->
+$$
+\pi(\gamma|\theta) \sim  \prod_{k=1}^{K}{\left(\frac{k}{K}\right)^{\gamma_k} \left( 1-\frac{k}{K} \right)^{1-\gamma_k}}
+$$
+
+For example, if we have 50 possible candidates, and we believe 10 of them are likely to be relevant for the model, then we set $pi=\left(\frac{k}{K}\right)=\left(\frac{10}{50}\right)=0.2$. In other words, there is a 20% chance of any feature being used in any one model run.  
+
+Which means that 
+
+$$
+\Rightarrow \pi(\beta|\theta)=\prod_{i=1}^N\left[\theta\psi_1(\beta)+(1-\theta)\psi_2(\beta)\right]
+$$
+
+COMPLETE THIS!!!
+
+* Do we choose how many features to include in any individual MCMC run?
+* Or do we update $\gamma_k$ to be larger if the absolute coefficient is big, and smaller if $\gamma_k$ is small?
+
+
+$$
+\gamma \sim \prod_{k=1}^{K}{\pi_k^{\gamma_k}(1-\pi_k)^{1-\gamma_k}} = \prod_{k=1}^{K}{\left(\frac{k}{K}\right)^{\gamma_k} \left( 1-\frac{k}{K} \right)^{1-\gamma_k}}
+$$
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+plot(cars)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
