@@ -3,30 +3,15 @@ title: "Spike and Slab"
 output:
   html_document:
     df_print: paged
+  html_notebook:
+    code_folding: hide
 ---
 
-* OLS doesn't model uncertainty in the coefficients, so a bayesian approach might better capture the inherent error in the model
-* We can use priors in the bayesian paradigm to achieve the same results as L1 and L2 regularization in the frequentist paradigm
-* Since L2 is normal, it doesn't zero-out coefficients, so it's not really a variable selection method, just a regularization method
-* Since L1 is laplace, it might drop features that have small but significant impact
-* Hence we can use a 'spike-and-slab' prior (a combination of both discrete and continuous density) to achieve variable selection
-
-* https://www.genetics.org/content/205/1/77
-* http://people.ischool.berkeley.edu/~hal/Papers/2012/fat.pdf
-* http://www.batisengul.co.uk/post/bayes-of-our-lives-a-gentle-introduction-to-bayesian-statistics/
-* http://www.batisengul.co.uk/post/spike-and-slab-bayesian-linear-regression-with-variable-selection/
-* https://repository.upenn.edu/cgi/viewcontent.cgi?article=1629&context=statistics_papers (1.3)
-* http://eeyore.wu-wien.ac.at/research/talks/resources/slidesscott.pdf
-
-SHOW THAT OLS OPTIMIZES BETA AT cov(X,y)/var(X)
-
-* Show that alpha/beta is optimized at cov(X,y)/var(X) etc. through 3d Plot
-
-# Quick recap of OLS
+# Quick recap of OLS: deriving optimal coefficients through least squares
 
 There are many options to choose for the intercept (alpha) and the slope (beta) to best a line that best fits the data, but we want to find the ones that best fit the data:
 
-```{r, message=F, warning=F}
+```{r, message=F, warning=F, fig.width=9}
 require(plotly)
 set.seed(1)
 X = 0:5
@@ -47,14 +32,11 @@ plot_ly(type='scatter',mode='lines') %>%
 
 We can see that the choices of alpha and beta that minimize the sum of squared residuals are 5 and 2 respectively:
 
-```{r}
-
+```{r, message=F, warning=F, fig.width=9}
 alpha_options <- seq(3,7,1) # seq(4,6,1) # 
 beta_options <- 2^seq(0,2,0.5) # 2^seq(0.5,1.5,0.5) # 
-
 graph_options <- "plot_ly(type='scatter',mode='lines') %>% add_trace(x=X,y=y,mode='markers',name='Observed data') %>% "
 cost_matrix <- matrix(nrow=length(alpha_options),ncol=length(beta_options),dimnames = list(alpha_options, beta_options))
-
 for(alpha in 1:length(alpha_options)) {
   for(beta in 1:length(beta_options)) {
     graph_options <- paste0(graph_options, paste0(" add_trace(x=X,y=",alpha_options[alpha],"+",beta_options[beta],"*X",",name='alpha=",alpha_options[alpha],",beta=",round(beta_options[beta],1),"') %>%  \n"))
@@ -63,7 +45,6 @@ for(alpha in 1:length(alpha_options)) {
 }
 graph_options <- paste0(graph_options, ' layout()')
 # eval(parse(text=graph_options))
-
 plot_ly(x=beta_options,y=alpha_options,z =~cost_matrix,showscale=FALSE,reversescale=TRUE) %>% 
   layout(scene=list(xaxis=list(title='alpha'),yaxis=list(title='beta'),zaxis=list(title='Sum squared residuals'))) %>% 
   add_surface(contours = list(z = list(project=list(z=TRUE))))
@@ -87,12 +68,13 @@ $$
 \Rightarrow \sum_{i=1}^N2( y_i-(\bar{y}-\beta_1\bar{x})-\beta_1x_i)(-x_i)=0 \\
 \Rightarrow \sum_{i=1}^N( y_i-\bar{y}-\beta_1(x_i-\bar{x}))(-x_i)
 =\sum_{i=1}^N( y_ix_i-\bar{y}x_i-\beta_1x_i^2+\beta_1\bar{x}x_i)
-=\sum_{i=1}^N{y_ix_i}-\bar{y}\sum_{i=1}^N{x_i}-\beta_1\sum_{i=1}^N{x_i}^2+\beta_1\bar{x}\sum_{i=1}^N{x_i})
+=\sum_{i=1}^N{y_ix_i}-\bar{y}\sum_{i=1}^N{x_i}-\beta_1\sum_{i=1}^N{x_i}^2+\beta_1\bar{x}\sum_{i=1}^N{x_i}) \\
 =\sum_{i=1}^N{y_ix_i}-\bar{y}(N\bar{x})-\beta_1\sum_{i=1}^N{x_i}^2+\beta_1\bar{x}(N\bar{x})=0 \\
 \Rightarrow \beta_1 = \frac{\sum_{i=1}^N{y_ix_i}-N\bar{x}\bar{y}}{\sum_{i=1}^N{x_i^2}-N\bar{x}^2}
-= \frac{\sum_{i=1}^N{y_ix_i}-N\bar{x}\bar{y}+(N\bar{x}\bar{y}-N\bar{x}\bar{y})}{\sum_{i=1}^N{x_i^2}-N\bar{x}^2+(N\bar{x}^2-N\bar{x}^2)}
+= \frac{\sum_{i=1}^N{y_ix_i}-N\bar{x}\bar{y}+(N\bar{x}\bar{y}-N\bar{x}\bar{y})}{\sum_{i=1}^N{x_i^2}-N\bar{x}^2+(N\bar{x}^2-N\bar{x}^2)} \\
 = \frac{\sum_{i=1}^N{y_ix_i}-\sum_{i=1}^N\bar{x}\bar{y}+(\bar{x}\sum_{i=1}^N{y_i}-\bar{y}\sum_{i=1}^N{x_i})}{\sum_{i=1}^N{x_i^2}-N\bar{x}^2+(\bar{x}\sum_{i=1}^N{x_i}-\bar{x}\sum_{i=1}^N{x_i})}
-= \frac{\sum_{i=1}^N{(y_i-\bar{y})(x_i-\bar{x})}}{\sum_{i=1}^N{(x_i-\bar{x})^2}}= \frac{cov(x,y)}{var(x)}
+= \frac{\sum_{i=1}^N{(y_i-\bar{y})(x_i-\bar{x})}}{\sum_{i=1}^N{(x_i-\bar{x})^2}} \\
+= \frac{cov(x,y)}{var(x)}
 $$
 
 (If the regression is multivariate, and the features are not perfectly orthogonal - i.e. is some multicollinearity - then this doesn't perfectly hold, and can yield different coefficients)
@@ -117,8 +99,6 @@ $$
 $$
 
 As such, we see that minimizing the cost function will artificially reduce the coefficents depending on the size of $\lambda$. This is an example of L2 regularization (ridge). Selecting a good value for $\lambda$ can be found through cross-validation.
-
-DRAW A GRAPH SHOWING FITS WITH VARIOUS LAMBDA PARAMETERS.
 
 However, L2 regularization will never zero-out a coefficient. Instead, we can similarly derive the same penalty through L1 regularisation (LASSO) which actively zeroes out coefficients:
 
@@ -160,9 +140,7 @@ $$
 \leftrightarrow \beta^*=\arg\min_\beta{\left[ \frac{1}{2}\epsilon^T\epsilon \right]}
 $$
 Now when we minimise the log-likelihood cost function by differentiating it with respect to $\beta$ and setting it to zero in order to derive the optimum coefficient, the constant $\log{(2\pi)}$ drops out, and we are left with differentiating $\frac{d}{d\beta}\epsilon^T\epsilon=0$ - the exact equivalent as with frequentist OLS.
-
 We can rewrite this in terms of the bayesian paradigm if we think of $\beta$ as a random variable (rather than a fixed quantity as per frequenist thinking):
-
 $$
 p(\beta|X,Y)=\frac{p(Y|\beta,X)p(\beta|X)}{p(Y|X)}=\frac{p(Y|\beta,X)p(\beta|X)}{\int p(Y|X,\beta)p(\beta|X)d\beta}
 $$
@@ -180,11 +158,17 @@ However, we might want to pick a more informative prior for two reasons (1) incl
 
 For (2), picking a prior that is concentrated at zero can help achieve this - for example, using a laplace distribution:
 
+
+```{r, fig.width=9}
+plot(x=seq(-10,10,0.1), y = sapply(seq(-10,10,0.1), FUN = function(x) exp(-abs(x)/0.5)/(2*0.5)), type='l',main='Laplace(gamma=0.5)')
+```
+
+This is given by the following density function:
+
 $$
 p(\beta|X) = p(\beta) = \prod_{k=1}^{K}{\frac{1}{2\gamma}e^{-\mid\beta\mid/{\gamma}}}
 $$
-
-PLOT OF LAPLACE
+Which if set as the prior $p(\beta|X)$, results in the following:
 
 $$
 \max_\beta{p(\beta|y,X)} = \max_\beta{p(y|beta,X)p(\beta|X)} \Rightarrow \\
@@ -195,78 +179,84 @@ $$
 = \min_\beta{\left[ \frac{1}{2}\sum{\log{(2\pi)}} + \frac{1}{2}\epsilon^T\epsilon -\sum_{k=1}^{K}{\log{\left(\frac{1}{2\gamma}\right)}} +\frac{1}{\gamma}\sum_{k=1}^{K}{\mid\beta\mid} \right]} \\
 \leftrightarrow \beta^*=\arg\min_\beta{\left[ \frac{1}{2}\epsilon^T\epsilon +\frac{1}{\gamma}\sum_{k=1}^{K}{\mid\beta\mid} \right]}
 $$
-
 When we minimize with respect to beta, the constants drop out, so we are left with minimizing $\min_\beta{\left[\epsilon^T\epsilon + (2/\gamma)\sum_{k=1}^{K}{\mid\beta\mid} \right]} \\$, which is equivalent to L1 Lasso regresion (where $2/\gamma$ is the regularization parameter).
 (Note that if we set the prior instead to the normal centered at zero, then we derive L2 ridge regression).
 
-However, the 'lasso prior' is not truly sparse when the likelihood function yields a non-zero coefficent. Although there is sparsity in the mode of the prior, when combining this with the likelihood distribution, the sparsity does not continue into the posterior distribution.
+However, the 'LASSO prior' is not truly sparse when the likelihood function yields a non-zero coefficent. Although there is sparsity in the mode of the prior, when combining this with the likelihood distribution, the sparsity does not continue into the posterior distribution.
 
-SHOW GRAPH OF THIS
+!SHOW GRAPH OF THIS!
 
 Consequently, we can combine a discrete and a continuous prior to construct a 'spike-and-slab' prior which fully zero-es out small coefficients:
 
 # Spike-and-slab
 
-Spike and slab priors put a lot of probability mass at zero (the 'spike') and roughly uniform low probability mass elsewhere (the 'slab').
+We want to create a prior probability distribution that:
 
-* The spike is often derived from a bernoulli....
-* The slab is often derived as a normal with a standard deviation following a tau distribution....
+* Adds all the features into any model draw, with the coefficients being estimated through maximum likelihood
+* For majority of these features, give them a prior that has a lot of probability mass around zero (a 'spike') to really shrink small coefficients - a form of 'exclusion'
+* For the rest of these features, gives them a prior thas is relatively uniform (a 'slab') to allow large coefficients to update with little shrinkage - a form of 'inclusion'
 
-Most spike-and-slab variable selection approaches use the mixture normal priors on coefficients and employ Markov Chain Monte Carlo (MCMC) algorithms (e.g., stochastic search variable selection) to fit the model (this is because the prior does not have a good conjugate likelhood)
-
-These MCMC methods are computationally intensive for analyzing large-scale data, and the mixture normal priors cannot shrink coefficients exactly to zero, and thus cannot automatically perform variable selection.
-
-(since L1 is laplace, it might drop features that have small but significant impact, and if the number of potential features is very large)
+One of the ways to achieve this is to create a prior that is a mixture of binary and continuous distribution, for example:
 
 $$
-\pi(\beta|\gamma)=\prod_{i=1}^N\left[\gamma_i\psi_1(\beta)+(1-\gamma_i)\psi_0(\beta)\right]
-$$
-Where:
-
-* $\psi_0(\beta)$ serves as the 'spike' dstribution for modelling irrelevant (zero) coefficients
-* $\psi_1(\beta)$ serves as the 'slab' dstribution for modelling relevant (large) effects
-* $\gamma$ is an intermediate vector of binary variables ($\gamma_i \in \{0,1\}$) indexing all the possible models
-
-Let define $\gamma$ be a vector, the same length of the number of candidate exogenous regressors included in the model, which indicates the probability of inclusion of the variable in the model:
-<!-- \gamma \sim \prod_{k=1}^{K}{\pi_k^{\gamma_k}(1-\pi_k)^{1-\gamma_k}} -->
-$$
-\pi(\gamma|\theta) \sim \prod_{k=1}^{K}{\theta_k^{\gamma_k}(1-\theta_k)^{1-\gamma_k}}
-$$
-Without informative prior information, we tend to just set $\theta$ to a constant $\theta=\left(\frac{k}{K}\right)$, which yields:
-<!-- \gamma \sim  \prod_{k=1}^{K}{\left(\frac{k}{K}\right)^{\gamma_k} \left( 1-\frac{k}{K} \right)^{1-\gamma_k}} -->
-$$
-\pi(\gamma|\theta) \sim  \prod_{k=1}^{K}{\left(\frac{k}{K}\right)^{\gamma_k} \left( 1-\frac{k}{K} \right)^{1-\gamma_k}}
+\beta = \gamma_iiZ_i \\ 
+\text{where:} \\
+\gamma_i \sim B(1,\pi_i) \\
+Z_i \sim N(0,\sigma^2) \\
+\frac{1}{\sigma^2} \sim \Gamma\left(\frac{df}{2},\frac{ss}{2}\right) \\
 $$
 
-For example, if we have 50 possible candidates, and we believe 10 of them are likely to be relevant for the model, then we set $pi=\left(\frac{k}{K}\right)=\left(\frac{10}{50}\right)=0.2$. In other words, there is a 20% chance of any feature being used in any one model run.  
+*(Spike-and-slab can be specified in many different ways, but we choose the one that is defined in BSTS here)*
 
-Which means that 
+Let's break this down. 
 
-$$
-\Rightarrow \pi(\beta|\theta)=\prod_{i=1}^N\left[\theta\psi_1(\beta)+(1-\theta)\psi_2(\beta)\right]
-$$
+First let's focus on $Z_i$. If we set a constant $\sigma^2=1$, then this is just a normal prior, and this on its own is equivalent to the prior for L2 ridge regression. 
 
-COMPLETE THIS!!!
+However, we want to form distribution that shrinks the coefficients less if there are larger: 
 
-* Do we choose how many features to include in any individual MCMC run?
-* Or do we update $\gamma_k$ to be larger if the absolute coefficient is big, and smaller if $\gamma_k$ is small?
+* It needs to be consistently flatter at the sides, so that it is easier for evidence to update the posterior distribution if the coefficient is large rather than shrink towards the middle (zero)
+* It needs to be suddenly steeper in the middle to push smaller coefficients towards zero
 
+We can achieve this in part through setting the inverse of the variance of the normal distribution to a gamma distribution (we'll go through the tau parameters in a mo).
 
-$$
-\gamma \sim \prod_{k=1}^{K}{\pi_k^{\gamma_k}(1-\pi_k)^{1-\gamma_k}} = \prod_{k=1}^{K}{\left(\frac{k}{K}\right)^{\gamma_k} \left( 1-\frac{k}{K} \right)^{1-\gamma_k}}
-$$
+This has a higher concentration around smaller values, pushing the general standard deviation to be tight around zero, but is more flat in its distribution of higher values. **It is this flatness that creates the 'slab'**
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
-
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
-
-```{r}
-plot(cars)
+```{r, message=F, warning=F, fig.width=9}
+par(mfrow=c(1,3))
+Zn = rnorm(n = 10^5, sd = 1)
+tau = invgamma::rinvgamma(n = 10^5, shape = .15, scale = .15)
+Z = rnorm(n = 10^5, sd = tau)
+hist(Zn, main = 'N(0,1)',breaks=100)
+hist(tau[tau < 10^5], main = 'Tau(.1,.1)',breaks=100)
+hist(Z[Z>-10^5&Z<10^5], main = 'N(0,Tau^-1(.1,.1))',breaks=100)
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+This already looks a bit like a 'spike-and-slab' shape, kind of a steep laplace distribution, but there is still quite a bit of probability mass either side of zero that would be good to reduce if we want a much sparser data set: cue the bernoulli distribution $\gamma_i$:
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+$\gamma$ is a vector of zeros and ones, where 'one' implies the feature is included in the model, and 'zero' implies it is excluded, called $\gamma \in \{0,1\}$, where the probabitlity of inclusion $\pi(\gamma)$ follows a bernoulli distribution:
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+$$
+\pi(\gamma) \sim \prod_{k=1}^{K}{\pi_k^{\gamma_k}(1-\pi_k)^{1-\gamma_k}}
+$$
 
+Without informative prior information, we tend to just set $\pi_k$ in the prior to a constant $\pi=\left(\frac{k}{K}\right)$, which yields:
+
+$$
+\pi(\gamma) \sim  \prod_{k=1}^{K}{\left(\frac{k}{K}\right)^{\gamma_k} \left( 1-\frac{k}{K} \right)^{1-\gamma_k}}
+$$
+
+For example, if we have 50 possible candidates, and we believe 25 of them are likely to be relevant for the model, then we set $pi=\left(\frac{k}{K}\right)=\left(\frac{25}{50}\right)=0.5$. In other words, there is a 50% chance of any feature being used in any one model run.  
+
+We can see then that the value is 50%, the prior for beta will put a lot of probability mass at zero. **This creates a 'spike' around zero** regardless of the distribution of $Z_I$.
+
+```{r, message=F, warning=F, fig.width=9}
+gamma = rbinom(10^5,1,.5)
+beta = gamma * Z
+par(mfrow=c(1,2))
+hist(as.numeric(gamma),main='Binom(1,0.5)')
+hist(beta[beta>-10&beta<10],breaks=100,main='Spike-and-Slab',ylim=c(0,1000))
+```
+
+*In BSTS, the default shape parameter is $df/2$, where $df$ is just the number of data points. The rate parameter is $ss/2$, where $ss$ is the explained some of squares (which can be derived as $ss=df(1-R^2)s_y^2$). BSTS defaults the expected $R^2=0.5$.*
+
+In practice, this happens many times with every draw of the model, and each time the potential coefficients are combined with the available data to make averaged predictions of the next period.
