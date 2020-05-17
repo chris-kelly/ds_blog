@@ -1,5 +1,5 @@
 ---
-title: "Maximum Likelihood Estimation"
+title: "Maximum Likelihood Estimation: Logistic regression"
 output:
   html_document:
     df_print: paged

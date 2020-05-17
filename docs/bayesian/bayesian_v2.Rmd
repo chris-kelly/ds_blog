@@ -241,7 +241,23 @@ In other words, our prior belief (before sampling and observing any data) was th
 
 It is this incorporation of prior data that is either seen as Bayesian's biggest advantage or pitfall. On the one hand, experiments are not abstract devices, and some knowledge about the process being investigated before obtaining the data is known and arguably should be incorporated. On the other, incorporating subjective opinions, particularly strong ones, may mean that you do not learn the true values you are trying to derive. Bayesian is thus analysis that uses a set of observations to change opinion rather than as a means to determine ultimate truth.
 
-## Thinking about Bayesian in terms of predicting things
+To help describe bayesian analysis, the following terms are often used:
+
+* Prior distribution: $Pr(\theta)$ - represents existing belief about $\theta$ (*Represents what was thought before seeing the data*). For example, in the binomial coin example above, we have prior knowledge that 90% of coins in our economy are fair, so $P(\theta)=P(Biased)=0.1$
+* Evidence: $X$ - what we just observed ($`r k`$ heads)
+* Marginal probability: $Pr(X)$ - the total probability of the data across all possible values of the parameter $\theta$. It doesn't actually depend on $\theta$ and isoften referred to as the proportionality factor/normalising constant (it makes sure all the scenarios are modelled. For example, $P(H=`r k`) = P(H=`r k`|Fair) \times P(Fair) + P(H=`r k`|Biased) \times P(Biased)$)
+* Likelihood function: $Pr(X|\theta)$ - the probability of $\theta$ given the data  observed (*Represents the new data available*). For example, $P(H=`r k`|Biased)=`r biased_coin_k_prob`$
+* Joint probability density function: $Pr(X,\theta)=Pr((X|\theta).Pr(\theta)$ - used to modify prior beliefs through Bayes Theorem
+* Posterior distribution: $Pr(\theta|X)$ - the *posterior density* represents the knowledge about the model parameters after observing the data (*Represents what is now thought given both prior data and data just obtained*)
+* Conjugancy: occurs when the posterior distribution is in the same family of probability density functions as the prior belief, but with new parameter values (updated to reflect what has been learned from the data). The posterior comes from the same family as the prior, rather than the data's distribution.
+
+And thus, we can then describe Bayes Theorem:
+
+$$
+P(\theta|X) =\frac{P(X|\theta) \times P(\theta)}{P(X|\theta) \times P(\theta) + P(X|\theta') \times P(\theta')} =\frac{P(X|\theta) \times P(\theta)}{P(X)}
+$$
+
+## Thinking about Bayesian in terms of predicting getting a head next time:
 
 There are two sources of uncertainty when building statistical models to predict things:
 
@@ -270,12 +286,20 @@ Note that we have subbed in our results for the probability that we have a fair 
 
 If we chose a purely frequentist approach, we would have guessed that the likelihood is $`r k/n`$, since we observed $`r k`$ heads, and \theta can only take one value (and this was the maximum likelihood estimate). If we chose to only use our prior informtion that 90% of coins were fair, we would have guessed $0.9 \times 0.5 + 0.1 \times `r k/n` = `r 0.9*0.5+0.1*k/n`$. However, since we have incorporated both the prior information and the new evidence, we predict a result that is somewhere in the middle, at $`r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`$.
 
+We can formalise this:
+
+$$
+f(y|x)= \int f(y|\theta,x)f(\theta|x) \partial(\theta)
+$$
+In other words, for all our potential estimates of what $\theta$ could be ($\delta(\theta)$), how likely each of those values for $\theta$ might be given the number of heads we have observed ($f(X|\theta)$), and how likely we were to observe our number of heads given those parameters $P(y|\theta,x)$, we can make a prediction for what our number of heads might be in the next flip.
+
+This now allows us to tackle problems where the prior comes from continuous distributions.
 
 ## Continuous prior beliefs
 
 In the last example, we had a very strong prior - $\theta$ could only take 2 values, and was 90% likely to be fair, so it had a very large influence on the result. However, Bayesian tends to most valuable where both the new data and past prior have more equal influence, and the posterior forming a distribution that sits somewhere between that estimated by the prior and likelihood function.
 
-So - let's say the time we tried flipping `r n` times, we got heads `r p*n` times (our prior) and the new coin flipped heads `r k` times (our new evidence). We can then get the following equations:
+So - let's say the last time we tried flipping `r n` times, we got heads `r p*n` times (our prior) and the new coin flipped heads `r k` times (our new evidence). We can then get the following equations:
 
 ``` {r, echo=FALSE}
 k1 <- 5
@@ -284,17 +308,26 @@ k2 <- k
 n2 <- 10
 ```
 
-$$
-\text{Prior: } \text{Beta}[k_{1},n_{1}-k_{1}] = \text{Beta}[`r k1`,`r n1`-`r k1`] = \text{Beta}[`r k1`,`r n1-k1`]
-$$
+Our prior is a binomial:
 
 $$
-\text{Likelihood: } \text{Beta}[k_{2},n_{2}-k_{2}] = \text{Beta}[`r k2`,`r n2`-`r k2`] = \text{Beta}[`r k2`,`r n2-k2`]
+\text{Prior: } P(\theta) \sim \text{Binom}[n_{1},k_{1}/n_1] = \text{Binom}[`r n1`,`r k1/n1`]
 $$
+Our likelihood is also binomial:
 
 $$
-\text{Posterior: } \text{Beta}[k_{1}+k_{2},n_{1}-k_{1}+n_{2}-k_{2}] = \text{Beta}[`r k1` + `r k2`,`r n1-k1` + `r n2-k2`] = \text{Beta}[`r k1+k2`,`r n1-k1+n2-k2`]
+\text{Likelhood: } P(X|\theta) \sim\text{Binom}[n_{2},k_{2}/n_2] = \text{Binom}[`r n2`,`r k2/n2`]
 $$
+Our posterior thus follows a binomial distribution too:
+
+$$
+\text{Posterior: } P(\theta|X) = \frac{P(X|\theta)P(\theta)}{\int P(X|\theta)P(\theta) d\theta}  \approx \text{Binom}\left[n_1+n_2,\frac{k_1+k_2}{n_1+n_2}\right] = \text{Binom}[`r k1+k2`,`r (k1+k2)/(n1+n2)`] \\
+$$
+
+In other words, we obtain our posterior estimate by multiplying our likelihood function and prior beliefs, and dividing it by all possible probabilities given our evidence that theta could take. In practice, this denominator just ensures that our probabilities sum to one.
+
+We can plot this to see what is looks like:
+
 ``` {r, fig.width=10, fig.height=7}
 # prior <- sapply(x, FUN = function(theta) {beta_probability(theta,k1+1,n1-k1+1)/(n1+1)})
 # likelihood_f <- sapply(x, FUN = function(theta) {beta_probability(theta,k2+1,n2-k2+1)/(n2+1)})
@@ -315,7 +348,75 @@ plot_ly(type = 'scatter', mode = 'lines+markers') %>%
   layout(title = "Updating Prior Beliefs")
 ```
 
-In other words, now we have incorporated our prior data and our new evidence, we have a likelihood of observing $`r k`$ heads next time we sample $`r n`$ times of $`r posterior[k+1]`$, and a likelihood of observing $`r k1`$ heads next time of $`r posterior[k1+1]`$. The most likely result is $`r which.max(posterior)-1`$ with a probability of $`r max(posterior)$`.
+
+The posterior curve is both taller and narrow than both the distributions estimated from the prior and the likelihood functions. This is because, by including both prior data and new evidence, our sample size has increased, so this reflects greater confidence that the observed number of heads,conditioned by the probability distribution of $\theta$, will lie within a smaller interval.
+
+However, in general, we might have a continuous prior or likelihood function, and the beta distribution is a continuous functional form of the binomial distribution.
+
+*A quick introduction to the beta distribution: it can model lots of different functional forms using $a$ and $b$ as parameters, by inputting them into the following function:*
+
+$$
+\text{Beta}[a,b] \sim \theta^{a-1}\times(1-\theta)^{b-1}
+$$
+
+Now let's define the binomial distribution for comparison:
+
+$$
+\text{Binom}(n,p) = {n \choose k } [\theta^{k}\times(1-\theta)^{n-k}]  
+$$
+
+Now to get geeky - you might have already noticed how eerily similar the beta distribution is to the binomial distribution from the formula - and in fact you can use the beta distribution as a continous function equivalent to the binomial function. 
+
+$$
+p(\text{H=}k| \theta) \sim \theta^k\times(1-\theta)^{n-k} \approx \text{Beta}[k+1,n-k+1]
+$$
+
+Both binomial and beta likelihoods are scaled though (normalized), so that the sum of their probabilites total 1.
+For the beta distribution, the scaling is achieved like this:
+
+$$
+Beta[\alpha,\beta] = \theta^{\alpha-1}\times(1-\theta)^{\beta-1} \times \frac{1}{\text{B}(\alpha,\beta)}
+$$
+Where
+
+$$
+\frac{1}{\text{B}(\alpha,\beta)} = \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha) \times \Gamma(\beta)} = \frac{(\alpha+\beta-1)!}{(\alpha-1)! \times (\beta-1)!}
+$$
+
+So if successes $\alpha = k+1$ and failures $\beta = n - k + 1$, then:
+
+$$
+\frac{(\alpha+\beta-1)!}{(\alpha-1)! \times (\beta-1)!}=\frac{((k+1)+(n-k+1)-1)!}{((k+1)-1)! \times ((n-k+1)-1)!}=\frac{(n+1)!}{(k)!\times(n-k)!} =
+{n+1 \choose k } = (n+1) \times {n \choose k }
+$$
+
+
+
+
+And thus:
+
+$$
+Beta[k+1,n-k+1] = (n+1) \times \text{Binom}(n,p)
+$$
+
+This relationship helps us combine binomial likelihoods and beta priors to create a posterior in what is called **conjugancy**. Conjugancy occurs when the posterior distribution is in the same family of probability density functions as the prior belief, but with new parameter values (updated to reflect what has been learned from the data). The posterior comes from the same family as the prior, rather than the data's distribution.
+
+So - if we want to use a beta distribution for our binomial prior, we can model this using a beta distribution by setting $a$ and $b$ to both equal to 1
+
+$$
+\text{Prior: } p(\theta) \approx \text{Beta}[k_{1}+1,n_{1}-k_{1}+1] = \text{Beta}[`r k1+1`,`r n1`-`r k1`+1] = \text{Beta}[`r k1`,`r n1-k1+1`]
+$$
+
+$$
+\text{Likelihood: } p(k|\theta)=\text{Binom}[n_{2},k_{2}/n_2] = \text{Beta}[k_{2}+1,n_{2}-k_{2}+1] = \text{Beta}[`r k2`+1,`r n2`-`r k2`+1] = \text{Beta}[`r k2+1`,`r n2-k2+1`]
+$$
+
+$$
+\text{Posterior: } p(\theta|k) \approx \\
+\text{Beta}[`r k1`,`r n1-k1+1`] \times \text{Beta}[`r k2+1`,`r n2-k2+1`] = \\
+\text{Beta}[k_1+k_{2}+2,n_1-k_1+n_{2}-k_{2}+2] = \text{Beta}[`r k1+k2+2`,`r n1-k1+n2-k2+2`]
+$$
+
 
 ``` {r, fig.width=10, fig.height=7}
 # prior <- sapply(x, FUN = function(theta) {beta_probability(theta,k1+1,n1-k1+1)/(n1+1)})
@@ -326,9 +427,14 @@ In other words, now we have incorporated our prior data and our new evidence, we
 # likelihood_f <- dbeta(x, k2+1, n2-k2+1)/(n2+1)
 # posterior <- dbeta(x, k1+k2+1, n1-k1+n2-k2+1)/(n1+n2+1)
 
-prior <- dbeta(x, k1+1, n1-k1+1)/(n1+1)
-likelihood_f <- dbeta(x, k2+1, n2-k2+1)/(n2+1)
-posterior <- dbeta(x, k1+k2+1, n1-k1+n2-k2+1)/(n1+1)
+x <- seq(0, 1, length=100+1)
+
+prior <- dbeta(x, k1+1, n1-k1+1)#/(n1+1)
+likelihood_f <- dbeta(x, k2+1, n2-k2+1)#/(n2+1)
+posterior <- dbeta(x, k1+k2+2, n1-k1+n2-k2+2)#/((n1+1)*(n2+1))
+# prior <- prior/sum(prior)
+# likelihood_f <- likelihood_f/sum(likelihood_f)
+# posterior <- posterior/sum(posterior)
 
 plot_ly(type = 'scatter', mode = 'lines') %>%
   add_trace(x = x, y = prior, name = 'Prior belief: Horse') %>%
@@ -337,35 +443,7 @@ plot_ly(type = 'scatter', mode = 'lines') %>%
   layout(title = "Updating Prior Beliefs")
 ```
 
-The posterior curve is both taller and narrow than both the distributions estimated from the prior and the likelihood functions. This is because, by including both prior data and new evidence, our sample size has increased, so this reflects greater confidence that the observed number of heads,conditioned by the probability distribution of $\theta$, will lie within a smaller interval.
-
-
-
-To help describe bayesian analysis, the following terms are often used:
-
-* Prior distribution: $Pr(\theta)$ - represents existing belief about $\theta$ (*Represents what was thought before seeing the data*). For example, in the binomial coin example above, we have prior knowledge that 90% of coins in our economy are fair, so $P(\theta)=P(Biased)=0.1$
-* Evidence: $X$ - what we just observed ($`r k`$ heads)
-* Marginal probability: $Pr(X)$ - the total probability of the data across all possible values of the parameter $\theta$. It doesn't actually depend on $\theta$ and isoften referred to as the proportionality factor/normalising constant (it makes sure all the scenarios are modelled. For example, $P(H=`r k`) = P(H=`r k`|Fair) \times P(Fair) + P(H=`r k`|Biased) \times P(Biased)$)
-* Likelihood function: $Pr(X|\theta)$ - the probability of $\theta$ given the data  observed (*Represents the new data available*). For example, $P(H=`r k`|Biased)=`r biased_coin_k_prob`$
-* Joint probability density function: $Pr(X,\theta)=Pr((X|\theta).Pr(\theta)$ - used to modify prior beliefs through Bayes Theorem
-* Posterior distribution: $Pr(\theta|X)$ - the *posterior density* represents the knowledge about the model parameters after observing the data (*Represents what is now thought given both prior data and data just obtained*)
-* Conjugancy: occurs when the posterior distribution is in the same family of probability density functions as the prior belief, but with new parameter values (updated to reflect what has been learned from the data). The posterior comes from the same family as the prior, rather than the data's distribution.
-
-And thus, we can then describe Bayes Theorem:
-
-$$
-P(\theta|X) =\frac{P(X|\theta) \times P(\theta)}{P(X|\theta) \times P(\theta) + P(X|\theta') \times P(\theta')} =\frac{P(X|\theta) \times P(\theta)}{P(X)}
-$$
-
-Okay - the example above might not quite be a fair comparison, since the Bayesian example had quite a strong prior: that there were only two possible values for theta, and that 90% of the time it is 0.5.
-
-A more 'objective' prior that is a fairer comparison to the frequentist example is to give all values of theta have an equal likelihood - in other words, a uniform distribution. We can model this using a beta distribution. Going forwards too, let's make this more generic, and term the number of heads observed in the sample as $k$.
-
-*A quick introduction to the beta distribution: it can model lots of different functional forms using $a$ and $b$ as parameters, by inputting them into the following function:*
-
-$$
-\text{Beta}[a,b] \sim \theta^{a-1}\times(1-\theta)^{b-1}
-$$
+Why might we want to use beta though rather than just binomial as our prior? Well a beta distribution is really flexible, so we can use it to model a range of different priors depending on previous experiments, or even as a way of regularising through the bayesian paradigm.
 
 So - if we want to create a uniform distribution for our prior, we can model this using a beta distribution by setting $a$ and $b$ to both equal to 1
 
@@ -391,8 +469,6 @@ $$
 \theta^{a-1+k}\times(1-\theta)^{b-1+n-k} \sim \text{Beta}[a+k,b+n-k] 
 $$
 
-(Note this is an approximation - the actual equality is specified later, as an example of conjugancy)
-
 ``` {r, fig.width=10, fig.height=7}
 
 gamma_function <- function(n) {
@@ -409,7 +485,7 @@ a <- 1
 b <- 1
 
 # uniform distribution
-# prior <- dbeta(x = x, shape1 = 1, shape2 = 1)
+# prior <- dbeta(x = x, shape1 = 1, shape2 = 1
 x <- seq(0, 1, length=100+1)
 prior <- sapply(x, FUN = function(theta) {beta_probability(theta,a,b)})
 
@@ -433,52 +509,122 @@ plot_ly(type = 'scatter', mode = 'lines') %>%
 
 As you can see, with a very 'objective' prior, the Bayesian posterior is very similar to the result derived from the frequentist evidence-only distribution (the Bayesian likelihood function).
 
-Note here that this a good example of conjugancy - see the section below on what that means exactly.
+## Markov-chain Monte-Carlo (MCMC): Estimating posterior distributions when the prior/likelihood density functions are non-conjugant
 
-In the two Bayesian examples above though, we either had a very weak prior (the uniform distribution) or a very strong prior (only two available values for theta, and 90% likelihood the coin is fair). Bayesian tends to most valuable where both the new data and past prior have more equal influence, and the posterior forming a distribution that sits somewhere between that estimated by the prior and likelihood function: 
+Sometimes though, we have priors and likelihood functions that do not play nicely with each other, and hence we cannot define the posterior density function analytically.
+In this instance, we can make many draws from the posterior distribution for various values of $\theta$ to infer what the posterior distribution looks like.
 
-So - let's say the last coin we tried flipping `r n` times got heads `r p*n` times (our prior) and the new coin flipped heads `r k` times (our new evidence). We can then get the following equations:
+This is the 'monte-carlo' bit - we randomly choose values of $\theta$ to make draws from the posterior from. 
 
-``` {r, echo=FALSE}
-k1 <- 5
-n1 <- 10
-k2 <- k
-n2 <- 10
-```
+However, the aim of this is to create a histogram that most closely resembles the posterior distibution that we are trying to estimate.
+For this histogram to be reflective of the posterior distribution, we need to take draws more frequently from the areas higher density from the posterior, and less frequently where they are of lower density.
 
-$$
-\text{Prior: } \text{Beta}[k_{1},n_{1}-k_{1}] = \text{Beta}[`r k1`,`r n1`-`r k1`] = \text{Beta}[`r k1`,`r n1-k1`]
-$$
-$$
-\text{Likelihood: } \text{Beta}[k_{2},n_{2}-k_{2}] = \text{Beta}[`r k2`,`r n2`-`r k2`] = \text{Beta}[`r k2`,`r n2-k2`]
-$$
+This is where the 'markov-chain' bit comes in - when making a new draw, whether we add this new value to the histogram, or the old one again to the histogram, depends on the probability density associated with the new point vs the old one.
+
+The instructions for the MCMC algorithm (using the Metropolis-Hastings method) is as follows:
 
 $$
-\text{Posterior: } \text{Beta}[k_{1}+k_{2},n_{1}-k_{1}+n_{2}-k_{2}] = \text{Beta}[`r k1` + `r k2`,`r n1-k1` + `r n2-k2`] = \text{Beta}[`r k1+k2`,`r n1-k1+n2-k2`]
+\text{for(i in num_draws) } \{\\
+\hspace{3cm}\theta_{new,i}:= X \sim N(\theta_{recorded,i-1},\sigma^2) \\
+\hspace{3cm}posterior_{new,i}:= P(X|\theta_{new,i}) \times P(\theta_{new,i}) \\
+\hspace{3cm}posterior_{old,i}:= P(X|\theta_{old,i}) \times P(\theta_{old,i}) \\
+\hspace{3cm}r_{num,i}:= r_i \sim \text{unif}(0,1)\\
+\hspace{3cm} \text{if}\left(\frac{posterior_{new,i}}{posterior_{old,i}} > r_{num,i}\right) \{\\
+\hspace{6cm}\theta_{recorded,i}:=\theta_{new,i}\\
+\hspace{6cm}\theta_{recorded,i}:=\theta_{old,i}\\
+\hspace{3cm}\}
+\\
+\}
 $$
+
+What does this mean?
+
+* With each value of $\theta_{recorded,i-1}$ we record from the previous iteration, we take a random walk from that point to trial another candidate $\theta_{new,i}$ (drawing from a normal distribution with mean given as the previously recorded $\theta_{recorded,i-1}$, and fixed standard deviation $\sigma^2$)
+* If that area is of higher density than the previous one (so the ratio is 1 or greater) then we record that
+* However, we don't automatically reject it. If it is bigger than a number randomly generated from a uniform distribution ($r_i$) then we still accept it (to allow if to explore the distribution rather than get stuck in local maxima)
+* We can then make a histogram of all the recorded $\theta_{recorded}$ across all iterations, and it should mirror the true distribution of the posterior.
+
+Let's take our example before, where our prior had `r p*n` of `r n` flips, and our evidence was `r k` of `r n` flips, to check how well this works. We run the algorithm 10,000 times (in general use, we might exclude a lot first draws, called the burn, but in this instance as long as we take enough samples it should still create a reflective histogram).
+
+As a reminder: 
+
+* The prior was $\text{Beta}[k1+1,n1-k1+1]=\text{Beta}[`r k1+1`,`r n1-k1+1`]$
+* The likelihood was $\text{Binom}[`r k2`,`r k2/n2`]$ 
+* So we expect the posterior $\sim \text{Beta}[k1+k2+2,n1+n2-k1-k2+2]=\text{Beta}[`r k1+k2+1`,`r n1+n2-k1-k2+2`]$):
+
 ``` {r, fig.width=10, fig.height=7}
-# prior <- sapply(x, FUN = function(theta) {beta_probability(theta,k1+1,n1-k1+1)/(n1+1)})
-# likelihood_f <- sapply(x, FUN = function(theta) {beta_probability(theta,k2+1,n2-k2+1)/(n2+1)})
-# posterior <- sapply(x, FUN = function(theta) {beta_probability(theta,k1+k2+2,n1-k1+1+n2-k2+1)/(n1+n2+2)})
+## MCMC M-H
+theta_v <- c()
+for(i in 1:10^5) {
+  if(i == 1) {
+    theta_old <- rnorm(1,p,0.05)
+    theta_new <- rnorm(1,p,0.05)
+  } else {
+    theta_old <- chosen_theta
+  }
+  theta_new <- rnorm(1,theta_old,0.05)
+  if(theta_new < 0 | theta_new > 1) {
+    break
+  }
+  posterior_new <- dbeta(theta_new,k1+1,n1-k1+1) * dbinom(k2,n2,theta_new) # new prior * likelihood
+  posterior_old <- dbeta(theta_old,k1+1,n1-k1+1) * dbinom(k2,n2,theta_old) # old prior * likelihood
+  if(posterior_new/posterior_old > runif(1)) {
+    chosen_theta <- theta_new
+  } else {
+    chosen_theta <- theta_old
+  }
+  theta_v <- c(theta_v,chosen_theta)
+}
 
-# prior <- dbeta(x, k1+1, n1-k1+1)/(n1+1)
-# likelihood_f <- dbeta(x, k2+1, n2-k2+1)/(n2+1)
-# posterior <- dbeta(x, k1+k2+1, n1-k1+n2-k2+1)/(n1+n2+1)
-
-prior <- dbeta(x, k1, n1-k1)
-likelihood_f <- dbeta(x, k2, n2-k2)
-posterior <- dbeta(x, k1+k2, n1-k1+n2-k2)
-
-plot_ly(type = 'scatter', mode = 'lines') %>%
-  add_trace(x = x, y = prior, name = 'Prior belief: Horse') %>%
-  add_trace(x = x, y = likelihood_f, name = 'Likelihood (New data): Donkey') %>%
-  add_trace(x = x, y = posterior, name = 'Posterior Belief: Mule') %>%
-  layout(title = "Updating Prior Beliefs")
+plot_ly() %>%
+  add_trace(x=theta_v,type='histogram',name='frequency') %>%
+  add_trace(x=density(theta_v)$x, y=density(theta_v)$y,type='scatter',mode='lines',yaxis='y2',name='Density approximation') %>%
+  add_trace(x=seq(0,1,0.01), y=dbeta(seq(0,1,0.01),k1+k2+2,n1+n2-k1-k2+2),type='scatter',mode='lines',yaxis='y2',name=paste0('True posterior: Beta(',k1+k2+2,',',n1-k1+n2-k2+2,')')) %>%
+  layout(yaxis2=list(overlaying="y",side="right",rangemode = "tozero"))
 ```
 
-The posterior curve is both taller and narrow than both the distributions estimated from the prior and the likelihood functions. This is because, by including both prior data and new evidence, our sample size has increased, so this reflects greater confidence that the observed number of heads,conditioned by the probability distribution of $\theta$, will lie within a smaller interval.
 
-Which leads on to **Bayesian Credible intervals** - the Bayesian equivalent to frequentist's confidence intervals. Because Bayesian estimates distributions rather than fixed values, credible intervals are arguably more intuitive than confidence intervals: they reflect the a (95%) probability that of here the value generated by the random variable theta will fall within the range (rather than the frequentist interpretation that the true value will fall within the confidence interval 95% of the time).
+## Thinking about Bayesian in terms of predicting getting a head next time (continuous prior):
+
+So now we are set up to make a prediction for getting a heads next time, given our prior beliefs and our new evidence.
+
+Let's remind ourselves of the equation to make predictions:
+
+$$
+f(y|x)= \int f(y|\theta,x)f(\theta|x) \partial(\theta)
+$$
+
+We now know $p(\theta|x)$ - our posterior distribution. 
+So now we just need to estimate $p(y|\theta,x)$. So how do we do this?
+
+Well we know that $y$ follows a bernoulli distribution, and we can solve this through maximum likelihood estimation.
+In particular, for binary predictions, we often assume that the likelihood function follows a logistic distribution, given as $p(y|\theta,X)=(1+e^{-X\beta})^{-1}$ - **<a href="https://chris-kelly.github.io/ds_blog/logit-from-ml/logit-coefficients.html">You can see this in another note I have written here</a>**.
+
+Great, so just need to integrate the product of $f(y|\theta,x)$ and $f(\theta|x)$ with respect to $\theta$.
+
+``` {r, fig.width=10, fig.height=7}
+y_dist <- c()
+theta_options <- seq(0,1,0.01)
+for(i in theta_options) {
+  theta_posterior_dist = dbeta(i,k1+k2+2,n1-k1+n2-k2+2)
+  y_logit = (1+exp(-(k2)*theta_posterior_dist))^(-1)
+  y_dist <- c(y_dist,theta_posterior_dist*y_logit)
+}
+
+plot_ly() %>%
+  add_trace(x=seq(0,1,0.01), y=y_dist,type='scatter',mode='lines',name=paste0('P(y|X)')) %>%
+  layout(title='Likelihood of observing heads next time')
+
+```
+
+This is more interesting if we had varying explanatory variables $X$ - and then we can derive different posterior distributions for $y$ given different values for those explanatory features.
+
+
+# Bayesian Credible intervals and HPD (need to change this to $y$)
+
+So now we have our posterior distribution for $\y$, how might we summarise our new understanding as to where $\y$ might lie in the range of?
+
+This leads on to **Bayesian Credible intervals** - the Bayesian equivalent to frequentist's confidence intervals. Because Bayesian estimates distributions rather than fixed values, credible intervals are arguably more intuitive than confidence intervals: they reflect the a (95%) probability that of here the value generated by the random variable theta will fall within the range (rather than the frequentist interpretation that the true value will fall within the confidence interval 95% of the time).
 
 Like a confidence interval, a credible interval is symmetric around the mean, and spans the x-axis enough to cover 95% of the area under the probability distribution curve. And that is good if the posterior distribution is also symmetric - but as can be seen in our example above, that is not necessarily the case, where the posterior is skewed.
 
@@ -537,8 +683,8 @@ credible_intervals <- find_beta_credible_interval(k+1, n-k+1, max_iterations = 1
 highest_posterior_density <- find_beta_hpd(k+1,n-k+1,conf_range = 0.95)
 
 plot_ly(type = 'scatter', mode = 'lines') %>%
-  add_trace(x = x, y = likelihood_f, name = 'Binom(10,0.2)') %>%
-  add_trace(x = rep(p,2), y = c(0,max(likelihood_f)), name = 'Mean') %>%
+  add_trace(x = x, y = y_dist, name = 'Binom(20,0.36)') %>%
+  add_trace(x = rep(k/n,2), y = c(0,max(y_dist)), name = 'Mean') %>%
   # add_trace(x = rep(credible_intervals[1],2), y = c(0,max(likelihood_f)), name = 'Lower credible interval bound') %>%
   # add_trace(x = rep(credible_intervals[2],2), y = c(0,max(likelihood_f)), name = 'Upper credible interval bound') %>%
   add_trace(x = pmin(pmax(x, credible_intervals[1]),credible_intervals[2]), y = likelihood_f, name = 'Credible Interval', fill = 'tozeroy', line = list(dash = 'dot')) %>%
@@ -546,7 +692,7 @@ plot_ly(type = 'scatter', mode = 'lines') %>%
 
 plot_ly(type = 'scatter', mode = 'lines') %>%
   add_trace(x = seq(0,1,0.001), y = sapply(seq(0,1,0.001), FUN = function(x) {dbeta(x,k+1,n-k+1)}), name = 'Binom(10,0.2)') %>%
-  add_trace(x = rep(p,2), y = c(0,max(likelihood_f)), name = 'Mean') %>%
+  add_trace(x = rep(k/n,2), y = c(0,max(likelihood_f)), name = 'Mean') %>%
   # add_trace(x = rep(credible_intervals[1],2), y = c(0,max(likelihood_f)), name = 'Lower credible interval bound') %>%
   # add_trace(x = rep(credible_intervals[2],2), y = c(0,max(likelihood_f)), name = 'Upper credible interval bound') %>%
   add_trace(x = highest_posterior_density, y = sapply(highest_posterior_density, FUN = function(x) {dbeta(x,k+1,n-k+1)}), name = 'Highest Posterior Density', fill = 'tozeroy', line = list(dash = 'dot')) %>%
@@ -561,240 +707,8 @@ The width of the credible interval is larger, ranging from `r min(credible_inter
 
 Some Bayesians argue though that credible intervals and HPDs are only really something that are useful to compare to frequentist interpretations, as the distribution is already given by the posterior.
 
-## Conjugancy (beta-binomial)
 
-Now to get geeky - you might have already noticed how eerily similar the beta distribution is to the binomial distribution from the formula - and in fact you can use the beta distribution as a continous function equivalent to the binomial function. 
 
-$$
-p(\text{H=}k| \theta) \sim \theta^k\times(1-\theta)^{n-k} \sim \text{Beta}[k+1,n-k+1]
-$$
 
-Both binomial and beta likelihoods are scaled though (normalized), so that the sum of their probabilites total 1.
-For the beta distribution, the scaling is achieved like this:
-
-$$
-Beta[\alpha,\beta] = \theta^{\alpha-1}\times(1-\theta)^{\beta-1} \times \frac{1}{\text{B}(\alpha,\beta)}
-$$
-Where
-
-$$
-\frac{1}{\text{B}(\alpha,\beta)} = \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha) \times \Gamma(\beta)} = \frac{(\alpha+\beta-1)!}{(\alpha-1)! \times (\beta-1)!}
-$$
-
-So if successes $\alpha = k+1$ and failures $\beta = n - k + 1$, then:
-
-$$
-\frac{(\alpha+\beta-1)!}{(\alpha-1)! \times (\beta-1)!}=\frac{((k+1)+(n-k+1)-1)!}{((k+1)-1)! \times ((n-k+1)-1)!}=\frac{(n+1)!}{(k)!\times(n-k)!} =
-{n+1 \choose k } = (n+1) \times {n \choose k }
-$$
-
-Now we define the binomial distribution for comparison:
-
-$$
-\text{Binom}(n,p) = {n \choose k } [\theta^{k}\times(1-\theta)^{n-k}]  
-$$
-
-
-And thus:
-
-$$
-Beta[k+1,n-k+1] = (n+1) \times \text{Binom}(n,p)
-$$
-
-This relationship helps us combine binomial likelihoods and beta priors to create a posterior in what is called **conjugancy**. Conjugancy occurs when the posterior distribution is in the same family of probability density functions as the prior belief, but with new parameter values (updated to reflect what has been learned from the data). The posterior comes from the same family as the prior, rather than the data's distribution.
-
-
-All the three coin examples above were **examples of conjugancy**. For example, the second had a prior that was uniform, expressed as a beta distribution, whereas the likelihood function was a binomial distribution. The posterior distribution was thus beta, since it is the same family of probability density functions as the prior belief (beta), but with new parameter values learnt from the probability mass function derived from the new data. Note that the posterior did not follow a binomial distribution, but followed a beta one, since this is what the prior used. Conjugates are thus very useful in helping derive the posterior distribution.
-
-Without conjugancy, one has to do the integral, which is often impossible to actually evaluate, and is one of the reasons bayesian was not popular in the 20th century (before computing allowed researchers to compute integrals numerically). Nowadays, sampling methods such as Markov-chain monte-carlo (MCMC) are often used to simulate the posterior distribution.
-
-## Conjugancy (gamma-poisson)
-
-As well as the beta-binomial conjugate family, we also have the gamma-poisson conjugate family. 
-
-The poisson function is specified as:
-
-$$
-P(X=k)=\frac{\lambda^{k}}{k!}e^{-\lambda} \text{ for } k=0,1,...,
-$$
-
-Whereas the gamma family is related to the gamma function (witk $k,\theta$ and $\alpha,\beta$ parameterizations listed below):
-
-$$
-f(x)=\frac{1}{\Gamma(k)\theta^k}x^{k-1}e^{-x/\theta}=\frac{\beta^{\alpha}}{\Gamma(k)}x^{\alpha-1}e^{-\beta x}
-$$
-And hence we can see that that where $n$ is a positive integer, and $\theta=1$, we observe the special case that $\Gamma(k)=(k-1)!$ so that 
-
-NEED TO WORK ON THIS BIT
-
-$$
-\frac{1}{\Gamma(k)\times\theta^k}x^{k-1}e^{-x/\theta}=
-\frac{1}{(k-1)!\times1^k}x^{k-1}e^{-x/\theta}=
-\frac{\lambda^{k}}{k!}e^{-\lambda}
-$$
-
-## Thinking about Bayesian in terms of predicting things
-
-There are two sources of uncertainty when building statistical models to predict things:
-
-* Uncertainty due to the fact any future value is itself a random event, $P(y|\theta)$ (because future events are essentially samples that have error conditioned by $\theta$)
-* Uncertainty in the parameter values which have been estimated on the basis of past data, $P(\theta|X)$ (for example, a coefficient estimated in a regression model)
-
-Classical models deal with point 1, making a point estimate in the future based on the 'best' parameters estimated from past data. This is equivalent to forming a likelihood (i.e. incorporating new data).
-What they don't do though is think about point 2, that the seemingly optimum model estimated itself might be incorrect since the true values of $\theta$ are not fixed, and this is equivalent to not building in any prior beliefs. In a way, by giving a point estimate, the models generate a false sense of precision, and the confidence intervals arounds any estimate is only predicated on the idea there is sampling randomness, rather than randomness associated with $\theta$ itself.
-
-In other words, classical models seek to best fit the new evidence (traditionally through maximum likelihood estimation for generalized linear models), whereas bayesian models incorporate prior beliefs as well.
-
-Imagine then, if we want to estimate the impact of x on y to make a future prediction, we can do the following:
-
-$$
-f(y|x)= \int f(y|\theta,x)f(\theta|x) \partial(\theta)
-$$
-
-Where $f(y|\theta,x)$ represents the modelling random sampling error as in frequentist regression (the likelihood function), and $f(\theta|x)$ representing the error arising from $\theta$ being a random variable rather than being treated as a fixed quantity.
-
-Now why is it an integral? Let's think of the coin example above where there are only two types of coins in the economy. To predict the likelihood of getting heads next time, given our evidence, we do the following:
-
-$$
-\begin{aligned}
-P(\text{heads}|k=2)
-\\ = P(\text{heads}|\text{fair},k=`r k`) \times P(\text{fair}|k=`r k`) + P(\text{heads}|\text{biased},k=`r k`) \times P(\text{biased}|k=`r k`)
-\\ = 0.5 \times P(\text{fair}|k=`r k`) + `r k/n` \times P(\text{biased}|k=`r k`)
-\\ = 0.5 \times \frac{P(k=`r k`|\text{fair}) \times P(\text{fair})}{P(k=`r k`)} + `r k/n` \times \frac{P(k=`r k`|\text{biased}) \times P(\text{biased})}{P(k=`r k`)}
-\\ = 0.5 \times `r round(fair_coin_prob, 4)` + `r k/n` \times `r round(biased_coin_prob,4)`
-\\ = `r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`
-\end{aligned}
-$$
-
-Note that we have subbed in our results for the probability that we have a fair or a biased coin using bayes theorem, to allow us to predict the probability we get heads next time.
-
-If we chose a purely frequentist approach, we would have guessed that the likelihood is $`r k/n`$, since we observed $`r k`$ heads, and \theta can only take one value. If we chose to only use our prior informtion that 90% of coins were fair, we would have guessed $0.9 \times 0.5 + 0.1 \times `r k/n` = `r 0.9*0.5+0.1*k/n`$. However, since we have incorporated both the prior information and the new evidence, we predict a result that is somewhere in the middle, at $`r round(0.5*fair_coin_prob+0.2*biased_coin_prob,4)`$. 
-
-As before, we summarise the probability mass function relating to $\theta$ as being 0.5 (fair) for 90% of coins in the economy, and $`r k/n` (biased) for 10% of these coins, which gives us the following:
-
-$$
-P(\text{heads|k=`r k`}) \\ 
-= \sum_{\theta}{P(\text{heads}|\theta\text{,k=`r k`}) \times P(\theta|\text{k=`r k`}) }
-$$
-
-And by taking into account all the possible values that theta can take, we are essentially integrating by theta. 
-
-$$
-P(\text{heads|k=`r k`}) = \int P(\text{heads}|\theta,k=`r k`) \text{ }P(\theta|k=`r k`) \text{ } \partial(\theta)
-\\
-\text{where }\theta =
-\begin{cases}
-`r k/n` & 10\% \text{ of the time}\\
-0.5 & 90\% \text{ of the time}\\
-\end{cases}
-$$
-
-
-NEED TO RE-WRITE EVERYTHING BELOW THIS
-
-!!!!!!!!!!!!!
-!!!!!!!!!!!!!
-!!!!!!!!!!!!!
-!!!!!!!!!!!!!
-!!!!!!!!!!!!!
-!!!!!!!!!!!!!
-!!!!!!!!!!!!!
-!!!!!!!!!!!!!
-!!!!!!!!!!!!!
-
-
-Now because this equation is done through conjugancy, this is easy to evaluate. Another way then of looking at it for this example is by rearranging bayes theroem:
-
-$$
-P(y|X) = \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
-= \frac{P(\text{heads}|\text{fair},k=2) \times P(\theta|X)}{P(\theta|y,X)}
-$$
-
-
-$$
-P(\theta|X) =\frac{P(X|\theta) \times P(\theta)}{P(X)} = \frac{P(X|\theta) \times P(\theta)}{P(X|\theta) \times P(\theta) + P(X|\theta') \times P(\theta')} \\
-
-$$
-
-
-
-And hence it can be seen that to get the full probability distribution associated with getting heads, you need to assess all possible values that theta could take.
-
-
-$$
-P(y|X) 
-= \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
-= \frac{P(\text{heads}|\theta,k=2) \times P(\theta|k=2)}{P(\theta|\text{heads,k=2})}
-$$
-
-
-$$
-P(\text{heads|k=2}) =
-\frac{P(\text{heads}|\text{fair,k=2}) \times P(\text{fair|k=2})}{P(\text{fair}|\text{heads},k=2)} +
-\frac{P(\text{heads}|\text{biased,k=2}) \times P(\text{biased|k=2})}{P(\text{biased}|\text{heads},k=2)} \\
-
-$$
-
-As before, we summarise the probability mass function relating to $\theta$ as being 0.5 (fair) for 90% of coins in the economy, and `r k` (biased) for 10% of these coins, which gives us the following:
-
-$$
-P(\text{heads|k=2}) = P(\text{heads}|\theta\text{,k=2}) \times P(\theta|\text{k=2}) 
-$$
-
-$$
-P(\text{heads}) = P(\text{heads}|\text{fair}) \times P(\text{fair}) + P(\text{heads}|\text{biased}) \times P(\text{biased})
-$$
-
-
-$$
-P(X,\theta|k=2) = \frac{P(\text{heads}|\theta,k=2) \times P(\theta|X)}{P(heads|k=2)}
-$$
-
-$$
-P(y|X) = \frac{P(y|\theta,X) \times P(\theta|X)}{P(\theta|y,X)}
-$$
-
-
-Let's say we believe the sampling error of y to follow a normal distribution, conditioned by $\theta$ (capturing the first source of uncertainty), which we would normally solve through MLE:
-
-$$
-f(y|\theta) = \frac{1}{\sigma\sqrt{2\pi}}\text{exp}(\frac{(y-\theta)^2}{2\sigma^2})
-$$
-$$
-f(y|\theta,X) = \frac{1}{\sigma\sqrt{2\pi}}\text{exp}(\frac{(y-X\beta)^2}{2\sigma^2})
-$$
-
-
-Then we just need to derive $f(\theta|x)$ in order to make a future prediction through bayes (and this term captures the error associated with our estimation of theta from the exogenous variables). 
-
-Now for frequentists, the pdf  $f(\theta|x)$ is equal to 1 at the true value of theta, and zero elsewhere, as theta is fixed (so there is only one perfect value).
-
-Though for Bayesians, the pdf is conditioned by prior beliefs about $\theta$. These are represented as a posterior approximated from the product of the likelihood of observing the exogenous variables given $\theta$, and the prior beliefs associated with $\theta$:
-
-$$
-f(\theta|x) \sim f(\theta) \times f(x|\theta)
-$$
-To capture the randomness of the $\theta$, we might also believe our prior $f(\theta)$ follows a normal distribution, but with mean $E(X)=b$ and variance $Var(X)=d^2$. As such, the distribution thus described is $X \sim N(b,d^2)$
-
-Then the prior can be derived from the normal pdf $x$:
-
-$$
-f(\theta) = \frac{1}{d\sqrt{2\pi}}\text{exp}(\frac{(\theta-b)^2}{2d^2})
-$$
-
-Now let's take the observed data $x=(x_1,x_3,...,x_n)$ and treat it as a random sample of size $n$ of a **random** variable $X$ with mean $E(X)=\theta$ and variance $Var(X)=\sigma^2$, and follows a normal distribution thus described as $X \sim N(\theta,\sigma^2)$
-
-Then the likelihood for every obervation $x_i$ from the whole sample $x$:
-
-$$
-f(x|\theta) = \prod_{i=1}^{n} f(x_i|\theta) = \prod_{i=1}^{n} \frac{1}{\sigma\sqrt{2\pi}}exp(\frac{(x_i-\theta)^2}{2\sigma^2})
-$$
-
-
-``` {r, echo = F, fig.width=10, fig.height=7}
-
-
-
-```
 
 
