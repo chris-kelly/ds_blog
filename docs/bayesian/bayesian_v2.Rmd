@@ -679,27 +679,20 @@ find_beta_hpd <- function(s1,s2,conf_range=0.95,precision = 0.001) {
   return(indexes)
 }
 
-credible_intervals <- find_beta_credible_interval(k+1, n-k+1, max_iterations = 10^3, criterion = 0.05)
-highest_posterior_density <- find_beta_hpd(k+1,n-k+1,conf_range = 0.95)
+credible_intervals <- find_beta_credible_interval(k1+k2+2, n1-k1+n2-k2+2, max_iterations = 10^3, criterion = 0.05)
+highest_posterior_density <- find_beta_hpd(k1+k2+2,n1-k1+n2-k2+2,conf_range = 0.95)
 
 plot_ly(type = 'scatter', mode = 'lines') %>%
-  add_trace(x = x, y = y_dist, name = 'Binom(20,0.36)') %>%
-  add_trace(x = rep(k/n,2), y = c(0,max(y_dist)), name = 'Mean') %>%
-  # add_trace(x = rep(credible_intervals[1],2), y = c(0,max(likelihood_f)), name = 'Lower credible interval bound') %>%
-  # add_trace(x = rep(credible_intervals[2],2), y = c(0,max(likelihood_f)), name = 'Upper credible interval bound') %>%
+  add_trace(x = x, y = y_dist, name = 'Beta(9,15)') %>%
+  add_trace(x = rep(0.36,2), y = c(0,max(sapply(highest_posterior_density, FUN = function(x) {dbeta(x,k1+k2+2,n1-k1+n2-k2+2)}))), name = 'Mean') %>%
   add_trace(x = pmin(pmax(x, credible_intervals[1]),credible_intervals[2]), y = likelihood_f, name = 'Credible Interval', fill = 'tozeroy', line = list(dash = 'dot')) %>%
   layout(title = 'Credible Interval (equidistant around mean)')
 
 plot_ly(type = 'scatter', mode = 'lines') %>%
-  add_trace(x = seq(0,1,0.001), y = sapply(seq(0,1,0.001), FUN = function(x) {dbeta(x,k+1,n-k+1)}), name = 'Binom(10,0.2)') %>%
-  add_trace(x = rep(k/n,2), y = c(0,max(likelihood_f)), name = 'Mean') %>%
-  # add_trace(x = rep(credible_intervals[1],2), y = c(0,max(likelihood_f)), name = 'Lower credible interval bound') %>%
-  # add_trace(x = rep(credible_intervals[2],2), y = c(0,max(likelihood_f)), name = 'Upper credible interval bound') %>%
-  add_trace(x = highest_posterior_density, y = sapply(highest_posterior_density, FUN = function(x) {dbeta(x,k+1,n-k+1)}), name = 'Highest Posterior Density', fill = 'tozeroy', line = list(dash = 'dot')) %>%
+  add_trace(x = seq(0,1,0.001), y = sapply(seq(0,1,0.001), FUN = function(x) {dbeta(x,k1+k2+2,n1-k1+n2-k2+2)}), name = 'Beta(9,15)') %>%
+  add_trace(x = rep(0.36,2), y = c(0,max(sapply(highest_posterior_density, FUN = function(x) {dbeta(x,k1+k2+2,n1-k1+n2-k2+2)}))), name = 'Mean') %>%
+  add_trace(x = highest_posterior_density, y = sapply(highest_posterior_density, FUN = function(x) {dbeta(x,k1+k2+2,n1-k1+n2-k2+2)}), name = 'Highest Posterior Density', fill = 'tozeroy', line = list(dash = 'dot')) %>%
   layout(title = 'Highest Posterior Density (smallest spread that contains 95% of data)')
-
-# pbeta(max(highest_posterior_density),k+1,n-k+1) - pbeta(min(highest_posterior_density),k+1,n-k+1)
-# pbeta(max(credible_intervals),k+1,n-k+1) - pbeta(min(credible_intervals),k+1,n-k+1)
   
 ```
 
