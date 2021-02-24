@@ -21,6 +21,7 @@ $$
 
 # Minimize sum of absolute residuals
 
+
 $$
 \min_\beta{\left[\sum_{i=1}^N{\mid \epsilon_i\mid} \right]}
 \Rightarrow \frac{\partial}{\partial\beta_j} \sum_{i=1}^N{\left(\epsilon_i^2\right)^{1/2}}=
@@ -36,5 +37,4 @@ f(x)=\frac{x}{\mid x \mid}\text{ is a nice transformation, where it is -1 if x i
 \text{So only if half of the errors are < 0 and half of the errors are > 0 is their sum equal to zero} \\
 \text{So we need to pick a value of } \beta_0 \text{ that means half of the errors are negative and half positive to minimize} \\
 \text{So this has to be the median value of } y_i \text{ :) }
-
 $$
