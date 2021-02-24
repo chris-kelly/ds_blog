@@ -1,0 +1,40 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Minimize sum of squared residuals
+
+$$
+\min_\beta{\left[\sum_{i=1}^N{\epsilon_i^2}\right]}
+\Rightarrow \frac{\partial}{\partial\beta_j} \sum_{i=1}^N{\epsilon_i^2}=\frac{\partial}{\partial\epsilon} \sum_{i=1}^N{\epsilon_i^2} \frac{\partial\epsilon}{\partial\beta_j} = \\
+\sum_{i=1}^N 2\epsilon_i\left(\frac{\partial\epsilon_i}{\partial\beta_j}\right)=0 \\
+\text{Independent of inputs: just one bias term:} \\
+\epsilon_i = y_i-\hat{y} = y_i-\hat{\beta_0} \\
+\text{Plug it in:} \\
+\sum_{i=1}^N2( y_i-\beta_0)\left(\frac{\partial( y_i-\beta_0)}{\partial\beta_0}\right)=0 \\
+\Rightarrow \sum_{i=1}^N2( y_i-\beta_0)(-1)=0 \\
+\Rightarrow n\beta_0 = \sum_{i=1}^N( y_i) \\
+\Rightarrow \beta_0 = \frac{\sum_{i=1}^N{y_i}}{n} =\bar{y}
+$$
+
+
+# Minimize sum of absolute residuals
+
+$$
+\min_\beta{\left[\sum_{i=1}^N{\mid \epsilon_i\mid} \right]}
+\Rightarrow \frac{\partial}{\partial\beta_j} \sum_{i=1}^N{\left(\epsilon_i^2\right)^{1/2}}=
+\frac{\partial}{\partial\epsilon} \sum_{i=1}^N{\left(\epsilon_i^2\right)^{1/2}} \frac{\partial\epsilon}{\partial\beta_j} = \sum_{i=1}^N \frac{1}{2}\left(\epsilon_i^2\right)^{-1/2} \frac{\partial}{\partial\epsilon}\epsilon_i^2 \left(\frac{\partial\epsilon_i}{\partial\beta_j}\right) \\
+= \sum_{i=1}^N \left(\epsilon_i^2\right)^{-1/2} \epsilon_i \left(\frac{\partial\epsilon_i}{\partial\beta_j}\right) \\
+= \sum_{i=1}^N \frac{\epsilon_i}{\mid\epsilon_i\mid} \left(\frac{\partial\epsilon_i}{\partial\beta_j}\right) = 0 \\
+\text{Independent of inputs: just one bias term:} \\
+\epsilon_i = y_i-\hat{y} = y_i-\hat{\beta_0} \\
+\text{Plug it in:} \\
+\sum_{i=1}^N \frac{y_i-\hat{\beta_0}}{\mid y_i-\hat{\beta_0}\mid} \left(\frac{\partial( y_i-\hat{\beta_0})}{\partial\beta_0}\right)=0 \\
+\Rightarrow \sum_{i=1}^N \left(\frac{y_i-\hat{\beta_0}}{\mid y_i-\hat{\beta_0}\mid} \right)(-1)=0 \\
+f(x)=\frac{x}{\mid x \mid}\text{ is a nice transformation, where it is -1 if x is negative, and 1 if x is positive (or zero if zero)} \\
+\text{So only if half of the errors are < 0 and half of the errors are > 0 is their sum equal to zero} \\
+\text{So we need to pick a value of } \beta_0 \text{ that means half of the errors are negative and half positive to minimize} \\
+\text{So this has to be the median value of } y_i \text{ :) }
+
+$$
