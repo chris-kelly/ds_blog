@@ -102,7 +102,7 @@ plot_ly(type = 'scatter') %>%
 
 ### Assessing performance in an unsupervised way
 
-However, what would we do if the ground truth labels don't exist?
+However, what would we do if the ground truth labels don't exist? How would we know if the pca clustering is more highly performant?
 
 Some measures look at cluster compactness within cluster and seperation between clusters. Well the far left cluster looks very compact and seperated from the other clusters, so is maybe more reliable. The other two clusters on the other hand have some overlap. 
 
@@ -159,7 +159,7 @@ df$Performance <- df[,1]
 df[rev(order(df$Performance)),c('Cluster', 'Performance')]
 ```
 
-We can capture this with a plot of the convex hull of cluster boundaries where observations ended up in the same cluster > x% of the time:
+We can capture the uncertainty of the edges of the clusters with a plot of the convex hull of cluster boundaries for observations that ended up in the same cluster > x% of the time:
 
 ```{r plot_60, message=F,warning=F,fig.width=9, fig.height=6}
 all_data <- data.frame(iris_pca$x)
@@ -201,4 +201,25 @@ plot_ly(type = 'scatter') %>%
   add_trace(x = iris_pca$x[pca_cluster$cluster == 3,1], y = iris_pca$x[pca_cluster$cluster == 3,2]) %>%
   add_trace(x = all_data$PC1[all_data$cluster == 3][perf_points[[3]]], y = all_data$PC2[all_data$cluster == 3][perf_points[[3]]], mode = 'lines') %>%
   layout(showlegend = F, xaxis = list(title = 'PC1'), yaxis = list(title = 'PC2'), title = '80% pairness stability')
+```
+
+```{r plot_90, message=F,warning=F,fig.width=9, fig.height=6}
+all_data <- data.frame(iris_pca$x)
+all_data$cluster <- pca_cluster$cluster
+
+all_data <- all_data[pair_sameness  >= 0.95,]
+
+perf_points <- sapply(1:3, FUN = function(i) {
+  rel_points <- grDevices::chull(x = all_data[all_data$cluster == i,1:2])
+  return(c(rel_points,rel_points[1]))
+})
+
+plot_ly(type = 'scatter') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 1,1], y = iris_pca$x[pca_cluster$cluster == 1,2], name = 'cluster 1') %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 1][perf_points[[1]]], y = all_data$PC2[all_data$cluster == 1][perf_points[[1]]], mode = 'lines', name = '>= 80% stable cluster boundary') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 2,1], y = iris_pca$x[pca_cluster$cluster == 2,2]) %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 2][perf_points[[2]]], y = all_data$PC2[all_data$cluster == 2][perf_points[[2]]], mode = 'lines') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 3,1], y = iris_pca$x[pca_cluster$cluster == 3,2]) %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 3][perf_points[[3]]], y = all_data$PC2[all_data$cluster == 3][perf_points[[3]]], mode = 'lines') %>%
+  layout(showlegend = F, xaxis = list(title = 'PC1'), yaxis = list(title = 'PC2'), title = '95% pairness stability')
 ```
