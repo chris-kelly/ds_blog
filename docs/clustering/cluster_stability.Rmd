@@ -1,0 +1,204 @@
+---
+title: "Cluster Stability"
+output: 
+    html_notebook:
+      code_folding: hide
+      smart: false
+    html_document: default
+    pdf_document: default
+---
+
+### Checking against ground-truth
+
+Doing clustering is great for segmentation, but how reliable are the clusters?
+
+Let's run some quick k-means clustering on the classic iris dataset.
+
+Unusually for clustering, in this instance we actually have some 'ground truth labels' (species) that we can see how well our clusters overlap with:
+
+```{r naive_plot, message=F,warning=F,fig.width=9, fig.height=6}
+require(plotly); require(reshape2)
+
+set.seed(99)
+
+# Import data
+data("iris")
+iris$Species <- as.character(iris$Species)
+
+# Define min-max
+min_max_scale <- function(x) {
+  return((x - min(x))/(max(x) - min(x)))
+}
+
+iris_raw <- iris[,-5]
+iris_raw <- apply(iris_raw, 2, min_max_scale)
+
+# First clustering
+naive_kcluster <- stats::kmeans(x = iris_raw[,-5], centers = 3)
+
+# Check performance
+naive_tab <- table(iris$Species, naive_kcluster$cluster)
+naive_tab <- dcast(data = data.frame(naive_tab), formula = Var2 ~ Var1, value.var = 'Freq')
+names(naive_tab)[1] <- 'Cluster'
+naive_tab$Performance <- round(apply(naive_tab[,2:4], 1, max)/apply(naive_tab[,2:4], 1, sum),3)
+naive_tab[rev(order(naive_tab$Performance)),]
+```
+
+### Using PCA to make higher-performant clusters
+
+Clustering weights about each feature equally. But some features are highly correlated (so effectively 'double-weighting' in clustering)!
+We can see this when looking at a correlation matrix of the features:
+
+```{r corr_raw}
+data.frame(round(cor(iris[,-5]),3))
+```
+
+So to do this more reliably, we can:
+
+* Use PCA to make features orthogonal (so we do not 'overweight' by correlated features)
+* Weight the features by the inverse of the sd explained by each component (as not all of these components should be treated equally)
+
+We can look at how well the clusters overlap with the 'ground truth' labels to check this:
+
+
+```{r first_plot, message=F,warning=F,fig.width=9, fig.height=6}
+# PCA
+iris_pca <- stats::prcomp(iris[,-5])
+iris_pca$x <- apply(iris_pca$x, 2, min_max_scale)
+weights <- iris_pca$sdev^2/max(iris_pca$sdev^2)
+
+for(i in 1:length(weights)) {
+  iris_pca$x[,i] <- iris_pca$x[,i] * weights[i]
+}
+
+# PCA clustering
+pca_cluster <- stats::kmeans(x = iris_pca$x, centers = 3)
+
+# Check performance
+pca_tab <- table(iris$Species, pca_cluster$cluster)
+pca_tab <- dcast(data = data.frame(pca_tab), formula = Var2 ~ Var1, value.var = 'Freq')
+names(pca_tab)[1] <- 'Cluster'
+pca_tab$Performance <- round(apply(pca_tab[,2:4], 1, max)/apply(pca_tab[,2:4], 1, sum),3)
+pca_tab[rev(order(pca_tab$Performance)),]
+
+# Convex hull of species for plotting
+species_chull <- sapply(unique(iris$Species), FUN = function(i) {
+  points <- grDevices::chull(x = iris_pca$x[iris$Species == i,1:2])
+  return(c(points,points[1]))
+})
+
+plot_ly(type = 'scatter') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 1,1], y = iris_pca$x[pca_cluster$cluster == 1,2], name = 'Cluster 1') %>%
+  add_trace(x = iris_pca$x[iris$Species == unique(iris$Species)[1],1][species_chull[[1]]], 
+            y = iris_pca$x[iris$Species == unique(iris$Species)[1],2][species_chull[[1]]], mode = 'lines', name = unique(iris$Species)[1]) %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 2,1], y = iris_pca$x[pca_cluster$cluster == 2,2], name = 'Cluster 2') %>%
+  add_trace(x = iris_pca$x[iris$Species == unique(iris$Species)[2],1][species_chull[[2]]], 
+            y = iris_pca$x[iris$Species == unique(iris$Species)[2],2][species_chull[[2]]], mode = 'lines', name = unique(iris$Species)[2]) %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 3,1], y = iris_pca$x[pca_cluster$cluster == 3,2], name = 'Cluster 3') %>%
+  add_trace(x = iris_pca$x[iris$Species == unique(iris$Species)[3],1][species_chull[[3]]], 
+            y = iris_pca$x[iris$Species == unique(iris$Species)[3],2][species_chull[[3]]], mode = 'lines', name = unique(iris$Species)[3]) %>%
+  layout(xaxis = list(title = 'PC1'), yaxis = list(title = 'PC2'))
+```
+
+### Assessing performance in an unsupervised way
+
+However, what would we do if the ground truth labels don't exist?
+
+Some measures look at cluster compactness within cluster and seperation between clusters. Well the far left cluster looks very compact and seperated from the other clusters, so is maybe more reliable. The other two clusters on the other hand have some overlap. 
+
+But although measuring this works for this clustering scenario (e.g Dunn Index), for other clustering shapes this is less reliable!
+
+So how can we more reliably measure this? Simualations:
+
+* Sample the pairs with replacement (bootstrap) and re-run the clustering algo each time
+* Check how often the cluster assigned to the sampled pairs end up in the same original cluster
+
+```{r check_stability, message=F,warning=F,fig.width=9, fig.height=6}
+
+random_samples <- lapply(1:10000, FUN = function(x) sample(1:nrow(iris_pca$x), replace = T))
+
+# Bootsrapped clustering
+many_runs <- lapply(random_samples, FUN = function(i) {
+  clusters <- stats::kmeans(x = iris_pca$x[i,], centers = 3)$cluster
+  val <- rep(NA, length(i))
+  val[i] <- clusters
+  return(val)
+  }
+)
+
+# Jaccard index 
+first_run <- list();
+cluster_map <- list();
+for(i in unique(pca_cluster$cluster)) {
+  first_run[[i]] <- lapply(many_runs, FUN = function(x) {
+    tab <- table(pca_cluster$cluster == i, x)
+    tab <- tab[2,]/apply(tab, 2, sum)
+    return(tab)
+    })
+  cluster_map[[i]] <- sapply(first_run[[i]], FUN = function(x) which.max(x))
+}
+cluster_map <- do.call(rbind, cluster_map)
+
+# Rename clusters
+rename_clusters <- sapply(1:length(many_runs), FUN = function(i) {match(many_runs[[i]], cluster_map[,i])})
+
+# Asess how often the pairs are in the same place
+pair_sameness <- apply(rename_clusters, 1, FUN = function(x) max(table(x, useNA = 'no')))/apply(rename_clusters, 1, FUN = function(x) sum(!is.na(x)))
+
+```
+
+Overall, the pairs end up in the same original cluster **`r scales::percent(mean(pair_sameness))`**  of the time, but there is variation between clusters:
+
+```{r results, message=F,warning=F,fig.width=9, fig.height=6}
+
+df <- data.frame(tapply(pair_sameness, INDEX = pca_cluster$cluster, FUN = mean))
+df$Cluster <- rownames(df)
+rownames(df) <- NULL
+df$Performance <- df[,1]
+
+df[rev(order(df$Performance)),c('Cluster', 'Performance')]
+```
+
+We can capture this with a plot of the convex hull of cluster boundaries where observations ended up in the same cluster > x% of the time:
+
+```{r plot_60, message=F,warning=F,fig.width=9, fig.height=6}
+all_data <- data.frame(iris_pca$x)
+all_data$cluster <- pca_cluster$cluster
+
+all_data <- all_data[pair_sameness  >= 0.6,]
+
+perf_points <- sapply(1:3, FUN = function(i) {
+  rel_points <- grDevices::chull(x = all_data[all_data$cluster == i,1:2])
+  return(c(rel_points,rel_points[1]))
+})
+
+plot_ly(type = 'scatter') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 1,1], y = iris_pca$x[pca_cluster$cluster == 1,2], name = 'cluster 1') %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 1][perf_points[[1]]], y = all_data$PC2[all_data$cluster == 1][perf_points[[1]]], mode = 'lines', name = '>= 80% stable cluster boundary') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 2,1], y = iris_pca$x[pca_cluster$cluster == 2,2]) %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 2][perf_points[[2]]], y = all_data$PC2[all_data$cluster == 2][perf_points[[2]]], mode = 'lines') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 3,1], y = iris_pca$x[pca_cluster$cluster == 3,2]) %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 3][perf_points[[3]]], y = all_data$PC2[all_data$cluster == 3][perf_points[[3]]], mode = 'lines') %>%
+  layout(showlegend = F, xaxis = list(title = 'PC1'), yaxis = list(title = 'PC2'), title = '60% pairness stability')
+```
+
+```{r plot_80, message=F,warning=F,fig.width=9, fig.height=6}
+all_data <- data.frame(iris_pca$x)
+all_data$cluster <- pca_cluster$cluster
+
+all_data <- all_data[pair_sameness >= 0.8,]
+
+perf_points <- sapply(1:3, FUN = function(i) {
+  rel_points <- grDevices::chull(x = all_data[all_data$cluster == i,1:2])
+  return(c(rel_points,rel_points[1]))
+})
+
+plot_ly(type = 'scatter') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 1,1], y = iris_pca$x[pca_cluster$cluster == 1,2], name = 'cluster 1') %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 1][perf_points[[1]]], y = all_data$PC2[all_data$cluster == 1][perf_points[[1]]], mode = 'lines', name = '>= 80% stable cluster boundary') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 2,1], y = iris_pca$x[pca_cluster$cluster == 2,2]) %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 2][perf_points[[2]]], y = all_data$PC2[all_data$cluster == 2][perf_points[[2]]], mode = 'lines') %>%
+  add_trace(x = iris_pca$x[pca_cluster$cluster == 3,1], y = iris_pca$x[pca_cluster$cluster == 3,2]) %>%
+  add_trace(x = all_data$PC1[all_data$cluster == 3][perf_points[[3]]], y = all_data$PC2[all_data$cluster == 3][perf_points[[3]]], mode = 'lines') %>%
+  layout(showlegend = F, xaxis = list(title = 'PC1'), yaxis = list(title = 'PC2'), title = '80% pairness stability')
+```

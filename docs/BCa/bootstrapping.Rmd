@@ -1,0 +1,191 @@
+---
+title: "Bootstrapping Confidence Intervals"
+output: html_notebook
+---
+
+## Introduction
+
+
+#### Understanding confidence intervals
+
+Here is a quick note on why we use bootstrapping and some different approaches.
+
+*Reference: Notes <a href="http://users.stat.umn.edu/~helwig/notes/bootci-Notes.pdf">here</a> and <a href="https://statweb.stanford.edu/~ckirby/brad/papers/2018Automatic-Construction-BCIs.pdf">here</a>*
+
+We can use bootstrapping to 'brute force' the confidence intervals of some statistics that might be hard to derive analytically (for example, median or r2 from regression).
+
+*Be careful of the interpretation of confidence intervals though, it is often stated incorrectly. A 99% confidence interval does not mean that there is a 99% probability the true value lies within this range: it either lies within the range, or it doesn't, there is no likelihood involved as this is a frequenist definition. What a confidence interval does mean is that if we repeated the proceedure many, many times we would expect the intervals to contain the true value of $\theta$ for 99% of the proceedures. See more details <a href="https://chris-kelly.github.io/ds_blog/bayesian/bayesian_v2.nb.html">here.</a>*
+
+This interpretation fits well with bootstrapping, where we essentially re-run the proceedure many times (just on the existing sample, rather than on the population).
+
+#### Describing confidence intervals
+
+A symmetric 100(1-$\alpha$)% confidence interval has the form  $\hat{\theta} \pm t_{\alpha/2}\sigma_{\hat{\theta}}$.
+
+(where $\hat{\theta}$ is the estimate of $\hat{\theta}$, $\sigma_{\hat{\theta}}$ is the standard error of $\hat{\theta}$).
+
+We thus might define two proporties to describe a confidence interval:
+
+* Length: $\hat{\theta}_{high} - \hat{\theta}_{low}$
+* Shape: $\frac{\hat{\theta}_{high} - \hat{\theta}}{\hat{\theta} - \hat{\theta}_{low}}$ (where shape > 1 indicates positive skew, <  is negative skew)
+
+*Note: A narrower CI is not necesarily a good CI - length and shape only important is coverage probabilities are accurate!*
+
+
+#### Defining coverage probability accuracy:
+
+We can define coverage probability as the proportion of the time that the interval contains the true value of interest. The nominal coverage probability is often set at 95%, but the actual coverage probability could be more or less if any assumptions are not met. The lower the sample size $n$, the more likely the actual coverage probability differs from the nominal coverage probability.
+
+We may then determine a method for defining confidence intervals is first-order accurate if the non-coverage probability on each side differs from the nominal value by $O(n^{-1/2})$. 
+
+We determine the method is second-order accurate if the non-coverage probability on each side differs from the nominal value by $O(n^{-1})$.
+
+It is thus desirable to find methods that have better coverage probability!
+
+## Classic standard error for assuming confidence intervals:
+
+We estimate this using the classic formula from the sample:
+
+$$
+\hat{\theta} \pm t_{\alpha/2}\hat{\sigma}_{\hat{\theta}}
+$$
+
+```{r classic_conf}
+set.seed(1)
+x = rnorm(50,mean=1)
+n <- length(x)
+
+SE = sd(x)/sqrt(n) # Est standard deviation of sample means
+student_t_lookup <- qt(0.975,df=n-1) 
+
+conf_intervals_classic <- c(mean(x) - qt(0.975,df=n-1)*SE, mean(x) + qt(0.975,df=n-1)*SE)
+conf_intervals_classic
+```
+
+## Bootstrap SE:
+
+Method: 
+Sample with replacement, calculate $\sigma$ each time, use mean in calc
+
+
+$$
+\hat{\theta} \pm {t_{\alpha/2}\hat{\sigma}_{\hat{B}}}
+$$
+
+* No advantage of classic standard error tbh
+* Tends to be too narrow for small n
+* Is poor if distribution highly skewed
+* Only first order accurate
+
+```{r bootstrap_se}
+bsamp <- sapply(1:10^5, FUN= function(i) {sample(x,replace=T)})
+SE_b = sd(apply(bsamp,2,mean)) # Standard deviation of sample means
+conf_intervals_bootstrap_se <- c(mean(x) - qt(0.975,df=n-1)*SE_b, mean(x) + qt(0.975,df=n-1)*SE_b)
+conf_intervals_bootstrap_se
+```
+
+## Bootstrap percentiles:
+
+Method: 
+Sample with replacement $B$ times, calculate $\hat{\theta}$ each time and put in order of size.
+
+90% confidence interval lies in:
+
+$$
+[\hat{\theta}_{0.05 \times B},\hat{\theta}_{0.95 \times B}]
+$$
+
+* First order accurate (not second order)
+* Range preserving, transformation invariant.
+* Can deal with skewness of distribution
+* Too narrow if small n (even worse than Bootstrap SE! - like using $z_{\alpha/2}\hat{\sigma}_{\hat{\theta}}$ instead of $t_{\alpha/2}\hat{\sigma}_{\hat{\theta}}$, see "Expanded percentile confidence intervals")
+* Only first order accurate
+
+```{r bootstrap_percentile}
+bootstrap_percentile <- quantile(apply(bsamp,2,mean),c(0.025,0.975),names = F)
+bootstrap_percentile
+```
+
+## Expanded percentile confidence interval:
+
+Percentile CI is comparable to using Z distribution (i.e. $z_{\alpha/2}\frac{\hat{\sigma}}{\sqrt{n}}$) instead of t distribution (i.e. $t_{\alpha/2}\frac{\hat{s}}{\sqrt{n}}$).
+
+*Note $s$ is the sample standard deviation (with $n-1$ degrees of freedom), as opposed to the population standard deviation (where we just divide by $n$).*
+
+Hence we can correct this by a factor $a_{\alpha,n}=\frac{t_{\alpha/2}}{z_{\alpha/2}}\times\frac{s}{\hat{\sigma}}$, i.e.
+
+$$
+z_{\alpha/2}\frac{\hat{\sigma}}{\sqrt{n}} \times \left( \frac{t_{\alpha/2}}{z_{\alpha/2}}\times\frac{s}{\hat{\sigma}} \right) = t_{\alpha/2}\frac{\hat{s}}{\sqrt{n}}
+$$
+
+In practice though, we don't apply this correction to both sides of the interval (as would no longer be transformation invariant) but to the quantiles of the bootstrap distribution. 
+Hence we need to find a new alpha for Z distribution, $\alpha'$, such that it equals the t-distribution estimation:
+
+$$
+\hat{\theta} + z_{\alpha'/2} \frac{\hat{\sigma}}{\sqrt{n}} =\hat{\theta} + t_{\alpha/2} \frac{s}{\sqrt{n}} \\
+\Rightarrow z_{\alpha'/2} = t_{\alpha/2} \times \frac{s}{\hat{\sigma}} = t_{\alpha/2} \times \sqrt{\frac{n}{n-1}} \\
+\Rightarrow \alpha/2 = \phi \left(\sqrt{\frac{n}{n-1}} \right)
+$$
+
+We can then use this alpha instead to determine which percentiles to pick.
+
+```{r expanded_percentile}
+alpha2 <-  pnorm(sqrt(n/(n-1))*qt(.025,df=n-1))
+expanded_bootstrap_percentile <- quantile(apply(bsamp,2,mean),c(alpha2,1-alpha2))
+expanded_bootstrap_percentile
+```
+
+* Corrects for narrowness bias of percentile CIs
+* Range preserving and transformation invariant
+* No correction for bias, and doesn’t fully correct for skewness
+* Only first order accurate
+
+## Bias corrected and Accerlated bootstrap CIs (BCa):
+
+* Have intervals of the form $[\hat{\theta_{\alpha_{low}}},\hat{\theta_{\alpha_{high}}}]$ but these do not necessarily map to 100$\alpha$-th and 100 $(1-\alpha)$-th percentiles 
+* Depends on acceleration parameter $\hat{a}$ and bias-correction factor $\hat{z_0}$
+
+
+$$
+\alpha_{low} = \Phi \left(\hat{z_0} + \frac{\hat{z_0} + z_{(\alpha)}}{1-\hat{a}(\hat{z_0} + z_{(\alpha)})} \right) \\
+\alpha_{high} = \Phi \left(\hat{z_0} + \frac{\hat{z_0} + z_{(1-\alpha)}}{1-\hat{a}(\hat{z_0} + z_{(1-\alpha)})} \right) \\
+$$
+
+Where $\Phi(.)$ is the CDF of the standard normal and $z_{(\alpha)}$ is the 100$\alpha$-th percentile of the standard normal
+
+Note then, if $\hat{a} = \hat{z_0} = 0$, then $\alpha_1 = \alpha$; and $\alpha_2 = 1 - \alpha;$ (same as percentile interval)
+
+The bias correction factor measures the median bias of $\hat{\theta}$ (i.e. the difference between the bootstrapped median $\hat{\theta_b}$ and the sample mean $\hat{\theta}$)
+
+The acceleration factor is calculated using a jackknife approach (where jacknife is the average of the mean $\hat{\theta_i}$ when leaving one sample out at a time, e.g. 
+
+$$
+\hat{\theta }_{i} = \frac{1}{n-1} \sum_{j \neq i}^{n}{\theta_i} \\
+\hat{\theta }_{(.)} = \frac{1}{n}\sum_{i=1}^{n}{\hat{\theta }_{i}} \\
+\hat{a} = \frac{ \sum_{i=1}^{n}{\left( \hat{\theta }_{(.)} - \hat{\theta }_{(i)} \right)^3}}{6 \left[\sum_{i=1}^{n}{\left( \hat{\theta }_{(.)} - \hat{\theta }_{(i)} \right)^2} \right]^{3/2}}
+$$
+
+
+* Range preserving and transformation invariant, works well for a variety of parameters
+* Second order accurate as well!
+* Less intuitive, requires estimaton of acceleration and bias-correction
+
+
+```{r}
+alpha = 0.025
+n <- length(x)
+nboot = 10^5
+
+z0 <- qnorm(sum(apply(bsamp,2,mean)<mean(x))/dim(bsamp)[2]) #  bias_correction_factor
+jackknife_i <- sapply(1:length(x),FUN = function(i) {mean(x[-i])}) # mean of 'leave on out'
+a_hat <- sum((mean(jackknife_i) - jackknife_i)^3) / 6*(sum(mean(jackknife_i) - jackknife_i)^2)^(3/2) # acceleration_factor
+alpha_lo <- pnorm(z0+(z0+qnorm(alpha))/(1-a_hat*(z0+qnorm(alpha)))) # low alpha
+alpha_hi <- pnorm(z0+(z0+qnorm(1-alpha))/(1-a_hat*(z0+qnorm(1-alpha)))) # high alpha
+
+bca_percentile <- quantile(apply(bsamp,2,mean),probs=c(alpha_lo,alpha_hi),names = F)
+bca_percentile
+
+# Note there is a function in bootstrap to do this: "bcanon"
+```
+
+
