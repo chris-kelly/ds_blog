@@ -1,0 +1,96 @@
+---
+title: "MLRATE"
+output:
+  html_notebook:
+    code_folding: hide
+---
+
+```{r message=FALSE,warning=FALSE, fig.width = 10}
+set.seed(1)
+
+require(plotly)
+
+n = 21
+x = rnorm(n,0,3)
+v = round(runif(n))
+y = 1*v + 1*x + rnorm(n,0,1)
+
+variant <- (y-predict(lm(y~v),newdata=data.frame(v=0)))[v == 1]
+control <- (y-predict(lm(y~v),newdata=data.frame(v=0)))[v == 0]
+variant_d <- density(variant)
+control_d <- density(control)
+
+variant2 <- (y-predict(lm(y~v+x),newdata=data.frame(x=x,v=0)))[v == 1]
+control2 <- (y-predict(lm(y~v+x),newdata=data.frame(x=x,v=0)))[v == 0]
+variant2_d <- density(variant2)
+# variant2_d$y <- variant2_d$y/sum(variant2_d$y)
+control2_d <- density(control2)
+# control2_d$y <- control2_d$y/sum(control2_d$y)
+
+p1 <- plotly::plot_ly(type = 'scatter', mode= 'markers') %>%
+  add_trace(y = x[v==0],x=y[v==0],color='#00263D',showlegend = F) %>%
+  add_trace(y = x[v==0],x = predict(lm(y~v),newdata=data.frame(v=rep(0,length(x[v==0])))),
+            name='Control',color='#00263D',mode='line',
+            error_x = list(
+              type='data',symmetric=FALSE,thickness=0.7,
+              array=y[v==0]-predict(lm(y~v),newdata=data.frame(v=0))
+              )
+            ) %>%
+  add_trace(y = x[v==1],x=y[v==1],color='#00253C',showlegend = F) %>%
+  add_trace(y = x[v==1], x = predict(lm(y~v),newdata=data.frame(v=rep(1,length(x[v==1])))),
+            name='Variant',color='#00253C',mode='line',
+            error_x = list(
+              type='data',symmetric=FALSE,thickness=0.7,
+              array=y[v==1]-predict(lm(y~v),newdata=data.frame(v=1))
+            )
+  ) %>% layout(yaxis= list(title='Relevant covariate',showticklabels = FALSE))
+
+p2 <- plotly::plot_ly(type = 'scatter', mode= 'markers') %>%
+  add_trace(y = x[v==0],x=y[v==0],color='#00263D',showlegend = F) %>%
+  add_trace(y = x[v==0],x = predict(lm(y~v+x),newdata=data.frame(v=0,x=x[v==0])),
+            name='Control',color='#00263D',mode='line',showlegend = F,
+            error_x = list(
+              type='data',symmetric=FALSE,thickness=0.7,
+              array=y[v==0]-predict(lm(y~v+x),newdata=data.frame(v=0,x=x[v==0]))
+            )
+  ) %>%
+  add_trace(y = x[v==1],x=y[v==1],color='#00253C',showlegend = F) %>%
+  add_trace(y = x[v==1], x = predict(lm(y~v+x),newdata=data.frame(v=1,x=x[v==1])),
+            name='Variant',color='#00253C',mode='line',showlegend = F,
+            error_x = list(
+              type='data',symmetric=FALSE,thickness=0.7,
+              array=y[v==1]-predict(lm(y~v+x),newdata=data.frame(v=1,x=x[v==1]))
+              )
+  ) %>%
+  layout(yaxis = list(showticklabels = FALSE))
+  
+p3 <- plotly::plot_ly(type = 'scatter', mode= 'lines') %>%
+  add_trace(x = y[v==0],type='histogram',histnorm = "probability",color='#00263D',showlegend = F) %>%
+  add_trace(x = y[v==1],type='histogram',histnorm = "probability",color='#00253C',showlegend = F) %>%
+  add_trace(x = control_d$x, y=control_d$y, fill = 'tozeroy',name='Control',color='#00263D',showlegend = F, yaxis = "y2") %>%
+  add_trace(x = variant_d$x, y=variant_d$y, fill = 'tozeroy',name='Variant',color='#00253C',showlegend = F, yaxis = "y2") %>%
+  layout(yaxis=list(title='Histogram <br> of samples',showticklabels = FALSE), yaxis2 = list(overlaying = "y3",
+  side = "right",showticklabels=FALSE))
+  
+p4 <- plotly::plot_ly(type = 'scatter', mode= 'lines') %>%
+  add_trace(x = control2,type='histogram',histnorm = "probability",color='#00263D',showlegend = F) %>%
+  add_trace(x = variant2,type='histogram',histnorm = "probability",color='#00253C',showlegend = F) %>%
+  add_trace(x = control2_d$x, y=control2_d$y,fill = 'tozeroy',name='Control',color='#00263D',showlegend = F, yaxis = "y2") %>%
+  add_trace(x = variant2_d$x, y=variant2_d$y,fill = 'tozeroy',name='Variant',color='#00253C',showlegend = F, yaxis = "y2") %>%
+  layout(yaxis = list(showticklabels = FALSE), yaxis2 = list(overlaying = "y5",side = "right",showticklabels=FALSE))
+
+
+p5 <-  plotly::plot_ly(type = 'scatter', mode= 'lines') %>%
+  add_trace(x = seq(min(y[v==0]),max(y[v==0]),0.01), y = dnorm(x = seq(min(y[v==0]),max(y[v==0]),0.01), mean = mean(y[v==0]), sd = sd(control)/sqrt(sum(v==0))), fill = 'tozeroy',name='Control',color='#00263D',showlegend = F) %>%
+  add_trace(x = seq(min(y[v==0]),max(y[v==0]),0.01), y = dnorm(x = seq(min(y[v==0]),max(y[v==0]),0.01), mean = mean(y[v==1]), sd = sd(variant)/sqrt(sum(v==1))), fill = 'tozeroy',name='Control',color='#00253C',showlegend = F) %>%
+  layout(xaxis = list(title = 'Typical A/B test: no variance reduction'), yaxis = list(title = 'Est. sampling <br> dist. of means',showtickLabels=FALSE))
+
+p6 <-  plotly::plot_ly(type = 'scatter', mode= 'lines') %>%
+  add_trace(x = seq(min(y[v==0]),max(y[v==0]),0.01), y = dnorm(x = seq(min(y[v==0]),max(y[v==0]),0.01), mean = mean(y[v==0]), sd = sd(control2)/sqrt(sum(v==0))), fill = 'tozeroy',name='Control',color='#00263D',showlegend = F) %>%
+  add_trace(x = seq(min(y[v==0]),max(y[v==0]),0.01), y = dnorm(x = seq(min(y[v==0]),max(y[v==0]),0.01), mean = mean(y[v==1]), sd = sd(variant2)/sqrt(sum(v==1))), fill = 'tozeroy',name='Control',color='#00253C',showlegend = F) %>%
+  layout(xaxis = list(title = 'Linear Variance reduction'), yaxis = list(showticklabels = FALSE))
+
+subplot(p1,p2,p3,p4,p5,p6,nrows=3, shareY = F,shareX = T, titleX = T, titleY = T, margin = c(0.1,0,0.05,0))
+
+```
+
