@@ -1,0 +1,80 @@
+---
+title: "Understanding differentation formulae"
+output: html_notebook
+---
+
+Why is $\frac{d}{dx} \left(x^{n} \right) = nx^{n-1}$ ?
+
+We can thus think of the gradient between $x$ and $a$ being equal to the change in the y axis divided by the change in the x axis, i.e.
+
+$$
+\frac{\Delta y}{\Delta x} =
+\frac{f(x)-f(a)}{x-a} = 
+\frac{x^n-a^n}{x-a}
+$$
+This isn't quite exact - there is a gap between this linear approximation and the exact curve. However, the smaller the movement across the x-axis, the closer the approximation is to the actual curve.
+
+For example, in the graph below, the line drawn between $f(1)$ and $f(2)$ is closer to the gradient at $f(1)$ of the true curve, compared to the line drawn between $f(1)$ and $f(3)$.
+
+```{r, echo=FALSE,fig.width=10}
+require(plotly)
+
+interpolate <- function(n,x1,x2,inc=0.1) {
+  x = seq(x1,x2,inc)
+  m = (x2^n - x1^n)/(x2 - x1)
+  c = x1^n - m*x1
+  y = m*x+c
+  triangle_x = c(x = c(x, rep(rev(x)[1],length(x)),rev(x)))
+  triangle_y = c(y, rev(y), rep(y[1],length(y)))
+  return(list(x=triangle_x,y=triangle_y))
+}
+
+n=3
+actual = list(x=seq(0,4,0.1))
+actual$y <- actual$x^n
+lb = 1
+ub <- c(3.5,3,2)
+lin0 = interpolate(n,lb,ub[1])
+lin1 = interpolate(n,lb,ub[2])
+lin2 = interpolate(n,lb,ub[3])
+
+plot_ly(type='scatter',mode='lines',line=list(dash = 'dot')) %>% 
+  add_trace(x=actual$x,y=actual$y,line=list(dash = 'solid'), name=paste0("f(x)=x^",n)) %>%
+  add_trace(x=lin0$x,y=lin0$y,name=paste0("f(",lb,") -> f(",ub[1],")")) %>%
+  add_trace(x=lin1$x,y=lin1$y,name=paste0("f(",lb,") -> f(",ub[2],")")) %>%
+  add_trace(x=lin2$x,y=lin2$y,name=paste0("f(",lb,") -> f(",ub[3],")")) #%>%
+  # add_annotations(x = ub,y=rep(actual$y[actual$x==lb],length(ub)),
+  #                 text=paste0("f(",ub,")"),ax=20,ay=20)
+```
+
+Consequently, we want to determine the gradient at the limit i.e. where $a \rightarrow x$, to get the true gradient.
+
+First though, let's factor out the $x-a$ term for simplicity. Let's derive a generic formula for this:
+
+* If $n=2$, then $x^2-a^2 = (x-a)(x+a)$
+* If $n=3$, then $x^3-a^3 = (x-a)(x^2+xa+a^2)$
+* If $n=4$, then $x^4-a^4 = (x-a)(x^3+x^2a+xa^2+a^3)$
+* If $n=5$, then $x^5-a^5 = (x-a)(x^4+x^3a+x^2a^2+xa^3+a^4)$
+* And so on. In fact for any $n$, we can derive $x^n-a^n = \sum_{i=1}^n \left( x^{n-i}a^{i-1} \right)$
+
+And we can now sub that into our formula, and the $x-a$ cancels out:
+
+$$
+\frac{x^n-a^n}{x-a} = 
+\frac{x-a}{x-a} \sum_{i=1}^n \left( x^{n-i}a^{i-1} \right) = 
+\sum_{i=1}^n \left( x^{n-i}a^{i-1} \right)
+$$
+
+And now let's calculate the result in the limit, where $x$ approaches $a$:
+
+$$
+\lim_{x \rightarrow a} \sum_{i=1}^n \left( x^{n-i}a^{i-1} \right) \sim
+\sum_{i=1}^n \left( a^{n-i}a^{i-1} \right) = 
+\sum_{i=1}^n \left( a^{n-1} \right) = 
+na^{n-1}
+$$
+
+Hence $\frac{d}{dx} \left(x^{n} \right) = nx^{n-1}$.
+
+Fin.
+
